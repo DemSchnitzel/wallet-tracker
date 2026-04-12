@@ -1,0 +1,5 @@
+{
+  "name": "Wallet-Tracker",
+  "description": "Eine einfache Webapp zur Erfassung und Kategorisierung täglicher Ausgaben.",
+  "requestFramePermissions": []
+}
