@@ -2,6 +2,9 @@ import { useMemo } from 'react';
 import { Expense, Category, CATEGORIES } from '@/types';
 import { CATEGORY_META } from '@/lib/constants';
 
+const isValidCategory = (cat: string): cat is Category =>
+  cat in CATEGORY_META;
+
 export interface DescriptionSuggestions {
   descriptions: { description: string; category: Category }[];
   tags: { tag: string; category: Category }[];
@@ -17,7 +20,7 @@ export function useDescriptionSuggestions(
     const q = query.toLowerCase();
 
     const descriptions = expenses
-      .filter(e => e.description.toLowerCase().includes(q))
+      .filter(e => e.description.toLowerCase().includes(q) && isValidCategory(e.category))
       .reduce((acc, curr) => {
         if (!acc.find(item => item.description === curr.description)) {
           acc.push({ description: curr.description, category: curr.category });

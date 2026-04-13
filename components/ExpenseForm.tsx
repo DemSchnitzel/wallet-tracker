@@ -182,7 +182,7 @@ export const ExpenseForm = ({
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
-                            <HugeiconsIcon icon={CATEGORY_META[c].icon} className="w-4 h-4" />
+                            <HugeiconsIcon icon={CATEGORY_META[c]?.icon} className="w-4 h-4" />
                           </div>
                           <span className="font-medium text-zinc-700">{tag.charAt(0).toUpperCase() + tag.slice(1)}</span>
                         </div>
@@ -207,7 +207,7 @@ export const ExpenseForm = ({
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
-                            <HugeiconsIcon icon={CATEGORY_META[item.category].icon} className="w-4 h-4" />
+                            <HugeiconsIcon icon={CATEGORY_META[item.category]?.icon} className="w-4 h-4" />
                           </div>
                           <span className="font-medium text-zinc-700">{item.description}</span>
                         </div>
