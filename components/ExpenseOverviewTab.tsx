@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { PieChart, Pie, Cell } from 'recharts';
 import { format, parseISO, subMonths, addMonths, subWeeks, addWeeks, subDays, addDays, isSameWeek, getWeek, isToday, isYesterday } from 'date-fns';
 import { de } from 'date-fns/locale';
 import useEmblaCarousel from 'embla-carousel-react';
@@ -25,9 +26,10 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense }: ExpenseOverviewT
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [donutShowAmounts, setDonutShowAmounts] = useState(false);
 
   // Secondary cards carousel
-  const [emblaRef, emblaApi] = useEmblaCarousel({ align: 'start', dragFree: false });
+  const [emblaRef, emblaApi] = useEmblaCarousel({ align: 'start', dragFree: false, skipSnaps: false, duration: 25 });
   const [activeCard, setActiveCard] = useState(0);
 
   useEffect(() => {
@@ -100,11 +102,17 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense }: ExpenseOverviewT
     expensesInView.reduce((sum, e) => sum + e.amount, 0),
   [expensesInView]);
 
-  const topCategory = useMemo(() => {
+const categoryData = useMemo(() => {
     const totals: Record<string, number> = {};
     expensesInView.forEach(e => { totals[e.category] = (totals[e.category] || 0) + e.amount; });
-    const entries = Object.entries(totals);
-    return entries.length === 0 ? null : entries.reduce((max, curr) => curr[1] > max[1] ? curr : max);
+    return Object.entries(totals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, value]) => ({
+        name,
+        value,
+        chartColor: CATEGORY_META[name as Category]?.chartColor ?? '#A1A1AA',
+      }));
   }, [expensesInView]);
 
   // Delta for comparison card
@@ -169,20 +177,64 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense }: ExpenseOverviewT
               </div>
             </div>
 
-            {/* Card 2: Höchste Kategorie */}
-            <div className="flex-[0_0_80%] bg-white rounded-[2rem] p-6 shadow-sm border border-zinc-100 flex flex-col justify-between min-h-[140px]">
-              <div className="text-zinc-500 text-sm font-medium flex items-center gap-2">
+            {/* Card 2: Kategorien Donut */}
+            <div className="flex-[0_0_80%] bg-white rounded-[2rem] p-5 shadow-sm border border-zinc-100 min-h-[140px]">
+              <div className="text-zinc-500 text-sm font-medium flex items-center gap-2 mb-2">
                 <HugeiconsIcon icon={ChartUpIcon} className="w-4 h-4 text-zinc-400" />
-                Höchste Kategorie
+                Kategorien
               </div>
-              <div className="mt-4">
-                <div className="text-lg font-medium text-zinc-900 truncate">
-                  {topCategory ? topCategory[0] : '–'}
+              {categoryData.length === 0 ? (
+                <div className="text-sm text-zinc-400 mt-4">Keine Daten</div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  {/* Donut */}
+                  <div className="shrink-0 relative">
+                    <PieChart width={88} height={88}>
+                      <Pie
+                        data={categoryData}
+                        cx={40}
+                        cy={40}
+                        innerRadius={27}
+                        outerRadius={41}
+                        dataKey="value"
+                        startAngle={90}
+                        endAngle={-270}
+                        strokeWidth={2}
+                        stroke="#fff"
+                        cornerRadius={3}
+                      >
+                        {categoryData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.chartColor} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                    {/* Center label */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <span className="text-xs font-semibold text-zinc-700">{categoryData.length}</span>
+                    </div>
+                  </div>
+                  {/* Legend */}
+                  <div className="flex flex-col gap-2 min-w-0 flex-1">
+                    {categoryData.slice(0, 3).map(entry => (
+                      <div key={entry.name} className="flex items-center gap-2 min-w-0">
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.chartColor }} />
+                        <span className="text-xs text-zinc-600 truncate flex-1">{entry.name}</span>
+                        <button
+                          onClick={() => setDonutShowAmounts(v => !v)}
+                          className="text-xs font-medium text-zinc-400 shrink-0 tabular-nums transition-opacity active:opacity-50"
+                        >
+                          {donutShowAmounts
+                            ? formatCurrency(entry.value)
+                            : `${Math.round((entry.value / totalInView) * 100)}%`}
+                        </button>
+                      </div>
+                    ))}
+                    {categoryData.length > 3 && (
+                      <div className="text-xs text-zinc-400">+{categoryData.length - 3} weitere</div>
+                    )}
+                  </div>
                 </div>
-                <div className="text-sm text-zinc-500 mt-1">
-                  {topCategory ? formatCurrency(topCategory[1]) : '0,00 €'}
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Card 3: Vorperioden-Vergleich */}
@@ -259,10 +311,26 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense }: ExpenseOverviewT
             />
           </div>
 
-          {isSearchFocused && searchQuery.trim() && (searchSuggestions.descriptions.length > 0 || searchSuggestions.tags.length > 0) && (
+          {isSearchFocused && searchQuery.trim() && (searchSuggestions.descriptions.length > 0 || searchSuggestions.tags.length > 0 || searchSuggestions.categories.length > 0) && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
-              {searchSuggestions.tags.length > 0 && (
+              {searchSuggestions.categories.length > 0 && (
                 <div className="p-2">
+                  <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-3 py-1.5">Kategorien</div>
+                  {searchSuggestions.categories.map(category => (
+                    <button key={category} onClick={() => {
+                      if (!selectedFilters.includes(category)) setSelectedFilters([...selectedFilters, category]);
+                      setSearchQuery('');
+                    }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-zinc-50 rounded-xl flex items-center gap-3 transition-colors">
+                      <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
+                        <HugeiconsIcon icon={CATEGORY_META[category].icon} className="w-4 h-4" />
+                      </div>
+                      <span className="font-medium text-zinc-700">{category}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {searchSuggestions.tags.length > 0 && (
+                <div className={`p-2 ${searchSuggestions.categories.length > 0 ? 'border-t border-zinc-100' : ''}`}>
                   <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-3 py-1.5">Vorschläge</div>
                   {searchSuggestions.tags.map(({ tag, category }) => (
                     <button key={tag} onClick={() => {
@@ -282,7 +350,7 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense }: ExpenseOverviewT
                 </div>
               )}
               {searchSuggestions.descriptions.length > 0 && (
-                <div className={`p-2 ${searchSuggestions.tags.length > 0 ? 'border-t border-zinc-100' : ''}`}>
+                <div className={`p-2 ${searchSuggestions.tags.length > 0 || searchSuggestions.categories.length > 0 ? 'border-t border-zinc-100' : ''}`}>
                   <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-3 py-1.5">Einträge</div>
                   {searchSuggestions.descriptions.map(item => (
                     <button key={item.description} onClick={() => {

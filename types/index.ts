@@ -1,6 +1,6 @@
 export const CATEGORIES = [
   'Supermarkt & Drogerie',
-  'Restaurant & Café',
+  'Restaurant & Imbiss',
   'Ausgehen & Party',
   'Kultur & Events',
   'Shopping',

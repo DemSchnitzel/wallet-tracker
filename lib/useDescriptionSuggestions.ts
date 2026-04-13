@@ -5,6 +5,7 @@ import { CATEGORY_META } from '@/lib/constants';
 export interface DescriptionSuggestions {
   descriptions: { description: string; category: Category }[];
   tags: { tag: string; category: Category }[];
+  categories: Category[];
 }
 
 export function useDescriptionSuggestions(
@@ -34,6 +35,8 @@ export function useDescriptionSuggestions(
       });
     });
 
-    return { descriptions, tags: tags.slice(0, 4) };
+    const categories = CATEGORIES.filter(c => c.toLowerCase().includes(q));
+
+    return { descriptions, tags: tags.slice(0, 4), categories };
   }, [expenses, query]);
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -45,6 +45,25 @@ export const ExpenseForm = ({
     initialValues?.date ?? format(new Date(), 'yyyy-MM-dd')
   );
 
+  const amountContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = amountContainerRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const step = e.shiftKey ? 100 : 1;
+      const delta = e.deltaY < 0 ? step : -step;
+      setAmount(prev => {
+        const current = parseInt(prev || '0', 10);
+        const next = Math.max(0, current + delta);
+        return next === 0 ? '' : next.toString();
+      });
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, []);
+
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: true,
     align: 'start',
@@ -74,7 +93,7 @@ export const ExpenseForm = ({
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Amount */}
       <div className="flex flex-col items-center justify-center pt-4 pb-2">
-        <div className="relative w-full flex justify-center items-center h-24">
+        <div ref={amountContainerRef} className="relative w-full flex justify-center items-center h-24">
           <div className={`text-6xl sm:text-7xl font-medium tracking-tighter flex items-baseline gap-2 ${amount ? 'text-zinc-900' : 'text-zinc-300 pointer-events-none'}`}>
             <span>
               {amount
@@ -94,7 +113,8 @@ export const ExpenseForm = ({
               if (clean.length <= 7) setAmount(clean);
             }}
             autoFocus={autoFocus}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-text"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-text caret-transparent"
+            onWheel={(e) => e.currentTarget.blur()}
           />
         </div>
       </div>
