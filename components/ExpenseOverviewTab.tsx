@@ -168,13 +168,13 @@ const categoryData = useMemo(() => {
           <div className="flex gap-3">
 
             {/* Card 1: Gesamtausgaben */}
-            <div className="flex-[0_0_80%] bg-zinc-900 text-white rounded-[2rem] p-6 shadow-lg shadow-zinc-900/20 flex flex-col justify-between min-h-[140px]">
+            <div className="flex-[0_0_80%] bg-zinc-900 text-white rounded-[2rem] p-6 shadow-lg shadow-zinc-900/20 flex flex-col justify-between min-h-[120px]">
               <div className="text-zinc-400 text-sm font-medium flex items-center gap-2">
                 <HugeiconsIcon icon={Wallet02Icon} className="w-4 h-4 text-zinc-500" />
                 Gesamtausgaben
               </div>
               <div>
-                <div className="text-3xl sm:text-4xl font-light tracking-tight mt-4">
+                <div className="text-4xl sm:text-5xl font-light tracking-tight mt-4">
                   {formatCurrency(totalInView)}
                 </div>
                 <div className={`text-xs font-medium mt-1.5 ${delta === null ? 'text-zinc-600' : delta < 0 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -188,7 +188,7 @@ const categoryData = useMemo(() => {
             </div>
 
             {/* Card 2: Kategorien Donut */}
-            <div className="flex-[0_0_80%] bg-white rounded-[2rem] p-5 shadow-sm border border-zinc-100 min-h-[140px]">
+            <div className="flex-[0_0_80%] bg-white rounded-[2rem] p-5 shadow-sm border border-zinc-100 min-h-[120px]">
               <div className="text-zinc-500 text-sm font-medium flex items-center gap-2 mb-2">
                 <HugeiconsIcon icon={ChartUpIcon} className="w-4 h-4 text-zinc-400" />
                 Kategorien
@@ -225,7 +225,7 @@ const categoryData = useMemo(() => {
                   </div>
                   {/* Legend */}
                   <div className="flex flex-col gap-2 min-w-0 flex-1">
-                    {categoryData.slice(0, 3).map(entry => (
+                    {categoryData.slice(0, 4).map(entry => (
                       <div key={entry.name} className="flex items-center gap-2 min-w-0">
                         <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.chartColor }} />
                         <span className="text-xs text-zinc-600 truncate flex-1">{entry.name}</span>
@@ -239,8 +239,8 @@ const categoryData = useMemo(() => {
                         </button>
                       </div>
                     ))}
-                    {categoryData.length > 3 && (
-                      <div className="text-xs text-zinc-400">+{categoryData.length - 3} weitere</div>
+                    {categoryData.length > 4 && (
+                      <div className="text-xs text-zinc-400">+{categoryData.length - 4} weitere</div>
                     )}
                   </div>
                 </div>

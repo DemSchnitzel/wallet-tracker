@@ -58,7 +58,7 @@ function computeDayData(expenses: Expense[], dates: string[]): DayData[] {
 // ─── WeekChart ───────────────────────────────────────────────────────────────
 
 const DAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-const CHART_HEIGHT = 100; // px, leaving room for labels
+const CHART_HEIGHT = 76; // px, leaving room for labels
 
 interface ChartProps {
   days: DayData[];
@@ -67,10 +67,63 @@ interface ChartProps {
 }
 
 function WeekChart({ days, selectedDate, onSelectDate }: ChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const lastIndexRef = useRef<number>(-1);
+  const isPointerDownRef = useRef(false);
   const maxTotal = Math.max(...days.map(d => d.total), 0.01);
 
+  const getIndexFromX = useCallback(
+    (clientX: number): number => {
+      if (!containerRef.current) return -1;
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const idx = Math.floor((x / rect.width) * days.length);
+      return Math.max(0, Math.min(days.length - 1, idx));
+    },
+    [days.length]
+  );
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      containerRef.current?.setPointerCapture(e.pointerId);
+      isPointerDownRef.current = true;
+      const idx = getIndexFromX(e.clientX);
+      if (idx >= 0 && idx !== lastIndexRef.current) {
+        lastIndexRef.current = idx;
+        onSelectDate(days[idx].date);
+        triggerHaptic();
+      }
+    },
+    [days, getIndexFromX, onSelectDate]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isPointerDownRef.current) return;
+      const idx = getIndexFromX(e.clientX);
+      if (idx >= 0 && idx !== lastIndexRef.current) {
+        lastIndexRef.current = idx;
+        onSelectDate(days[idx].date);
+        triggerHaptic();
+      }
+    },
+    [days, getIndexFromX, onSelectDate]
+  );
+
+  const handlePointerUp = useCallback(() => {
+    isPointerDownRef.current = false;
+    lastIndexRef.current = -1;
+  }, []);
+
   return (
-    <div className="h-[124px] flex gap-2">
+    <div
+      ref={containerRef}
+      className="h-[100px] flex gap-2 cursor-pointer select-none touch-none"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
       {days.map((day, i) => {
         const isSelected = day.date === selectedDate;
         const barH = day.total > 0
@@ -78,11 +131,10 @@ function WeekChart({ days, selectedDate, onSelectDate }: ChartProps) {
           : 4;
 
         return (
-          <button
+          <div
             key={day.date}
-            onClick={() => onSelectDate(day.date)}
             aria-label={`${DAY_LABELS[i]}: ${formatCurrency(day.total)}`}
-            className="flex-1 flex flex-col justify-end items-center focus:outline-none"
+            className="flex-1 flex flex-col justify-end items-center"
             style={{ height: '100%' }}
           >
             <div
@@ -99,7 +151,7 @@ function WeekChart({ days, selectedDate, onSelectDate }: ChartProps) {
                 style={{ height: barH, marginBottom: '6px' }}
               />
             </div>
-          </button>
+          </div>
         );
       })}
     </div>
@@ -159,7 +211,7 @@ const getIndexFromX = useCallback(
   return (
     <div
       ref={containerRef}
-      className="relative h-[124px] flex gap-[2px] items-end cursor-pointer select-none touch-none"
+      className="relative h-[100px] flex gap-[2px] items-end cursor-pointer select-none touch-none"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
