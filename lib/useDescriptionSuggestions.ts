@@ -13,7 +13,7 @@ export function useDescriptionSuggestions(
   query: string
 ): DescriptionSuggestions {
   return useMemo(() => {
-    if (!query.trim()) return { descriptions: [], tags: [] };
+    if (!query.trim()) return { descriptions: [], tags: [], categories: [] };
     const q = query.toLowerCase();
 
     const descriptions = expenses

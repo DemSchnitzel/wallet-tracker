@@ -9,6 +9,7 @@ import { Expense } from '@/types';
 import { ExpenseInputTab } from '@/components/ExpenseInputTab';
 import { ExpenseOverviewTab } from '@/components/ExpenseOverviewTab';
 import { EditExpenseModal } from '@/components/EditExpenseModal';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>(() => {
@@ -42,6 +43,7 @@ export default function App() {
   };
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-[#FEFEFE] text-zinc-900 font-sans pb-24 md:pb-12 selection:bg-zinc-200">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <header className="pt-8 pb-4 sticky top-0 z-50 bg-[#FEFEFE]/80 backdrop-blur-xl">
@@ -95,5 +97,6 @@ export default function App() {
 
       <Toaster richColors position="bottom-center" />
     </div>
+    </ErrorBoundary>
   );
 }
