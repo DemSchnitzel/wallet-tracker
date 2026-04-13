@@ -6,15 +6,35 @@ import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Toaster } from '@/components/ui/sonner';
 import { Expense } from '@/types';
+import { CATEGORY_META } from '@/lib/constants';
 import { ExpenseInputTab } from '@/components/ExpenseInputTab';
 import { ExpenseOverviewTab } from '@/components/ExpenseOverviewTab';
 import { EditExpenseModal } from '@/components/EditExpenseModal';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
+// Umbenannte Kategorien: alter Name → neuer Name
+const CATEGORY_MIGRATIONS: Record<string, string> = {
+  'Restaurant & Café': 'Restaurant & Imbiss',
+};
+
+function migrateExpenses(raw: Expense[]): Expense[] {
+  return raw.map(e => {
+    const migrated = CATEGORY_MIGRATIONS[e.category];
+    return migrated ? { ...e, category: migrated as Expense['category'] } : e;
+  });
+}
+
 export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>(() => {
     const saved = localStorage.getItem('expenses');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    const parsed: Expense[] = JSON.parse(saved);
+    const migrated = migrateExpenses(parsed);
+    // Direkt zurückschreiben falls sich etwas geändert hat
+    if (migrated.some((e, i) => e.category !== parsed[i].category)) {
+      localStorage.setItem('expenses', JSON.stringify(migrated));
+    }
+    return migrated;
   });
 
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
