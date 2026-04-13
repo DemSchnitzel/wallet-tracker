@@ -5,12 +5,13 @@ import { de } from 'date-fns/locale';
 import useEmblaCarousel from 'embla-carousel-react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  ArrowLeft01Icon, ArrowRight01Icon, Wallet02Icon, ChartUpIcon, Search01Icon, Cancel01Icon, ArrowDown01Icon, Clock01Icon
+  ArrowLeft01Icon, ArrowRight01Icon, Wallet02Icon, ChartUpIcon, Search01Icon, Cancel01Icon, ArrowDown01Icon
 } from '@hugeicons/core-free-icons';
 
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ExpenseCard } from '@/components/ExpenseCard';
+import { ExpenseTrendCard } from '@/components/ExpenseTrendCard';
 import { Expense, Category, CATEGORIES } from '@/types';
 import { CATEGORY_META, formatCurrency } from '@/lib/constants';
 import { useDescriptionSuggestions } from '@/lib/useDescriptionSuggestions';
@@ -126,15 +127,15 @@ const categoryData = useMemo(() => {
           <DropdownMenuTrigger render={
             <Button variant="ghost" className="h-10 px-2 -ml-2 rounded-xl hover:bg-zinc-100 text-zinc-900 font-medium text-base flex items-center gap-2" />
           }>
-            {viewMode === 'month' && 'Monatsübersicht'}
-            {viewMode === 'week' && 'Wochenübersicht'}
-            {viewMode === 'day' && 'Tagesübersicht'}
+            {viewMode === 'month' && 'Monatsansicht'}
+            {viewMode === 'week' && 'Wochenansicht'}
+            {viewMode === 'day' && 'Tagesansicht'}
             <HugeiconsIcon icon={ArrowDown01Icon} className="w-4 h-4 text-zinc-500" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="rounded-2xl border-zinc-100 shadow-xl p-2 min-w-[200px]">
-            <DropdownMenuItem onClick={() => setViewMode('month')} className="rounded-xl px-3 py-2.5 cursor-pointer">Monatsübersicht</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setViewMode('week')} className="rounded-xl px-3 py-2.5 cursor-pointer">Wochenübersicht</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setViewMode('day')} className="rounded-xl px-3 py-2.5 cursor-pointer">Tagesübersicht</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setViewMode('month')} className="rounded-xl px-3 py-2.5 cursor-pointer">Monatsansicht</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setViewMode('week')} className="rounded-xl px-3 py-2.5 cursor-pointer">Wochenansicht</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setViewMode('day')} className="rounded-xl px-3 py-2.5 cursor-pointer">Tagesansicht</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -172,8 +173,17 @@ const categoryData = useMemo(() => {
                 <HugeiconsIcon icon={Wallet02Icon} className="w-4 h-4 text-zinc-500" />
                 Gesamtausgaben
               </div>
-              <div className="text-3xl sm:text-4xl font-light tracking-tight mt-4">
-                {formatCurrency(totalInView)}
+              <div>
+                <div className="text-3xl sm:text-4xl font-light tracking-tight mt-4">
+                  {formatCurrency(totalInView)}
+                </div>
+                <div className={`text-xs font-medium mt-1.5 ${delta === null ? 'text-zinc-600' : delta < 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {delta === null
+                    ? 'Kein Vergleich'
+                    : delta === 0
+                    ? `Gleich wie ${previousPeriodData!.label.replace('als ', '')}`
+                    : `${delta < 0 ? '↑' : '↓'} ${formatCurrency(Math.abs(delta))} ${delta < 0 ? 'weniger' : 'mehr'} ${previousPeriodData!.label}`}
+                </div>
               </div>
             </div>
 
@@ -237,36 +247,18 @@ const categoryData = useMemo(() => {
               )}
             </div>
 
-            {/* Card 3: Vorperioden-Vergleich */}
-            <div className="flex-[0_0_80%] bg-white rounded-[2rem] p-6 shadow-sm border border-zinc-100 flex flex-col justify-between min-h-[140px]">
-              <div className="text-zinc-500 text-sm font-medium flex items-center gap-2">
-                <HugeiconsIcon icon={Clock01Icon} className="w-4 h-4 text-zinc-400" />
-                {viewMode === 'month' ? 'Vormonat' : viewMode === 'week' ? 'Vorwoche' : 'Vortag'}
-              </div>
-              <div className="mt-4">
-                {delta === null ? (
-                  <div className="text-sm text-zinc-400">Kein Vergleich verfügbar</div>
-                ) : delta === 0 ? (
-                  <div className="text-lg font-medium text-zinc-500">Gleich wie {previousPeriodData!.label.replace('als ', '')}</div>
-                ) : (
-                  <>
-                    <div className={`text-lg font-medium ${delta < 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {formatCurrency(Math.abs(delta))} {delta < 0 ? 'weniger' : 'mehr'}
-                    </div>
-                    <div className="text-sm text-zinc-400 mt-1">
-                      {previousPeriodData!.label}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
+            {/* Card 3: Ausgaben-Trend (nur Monats- und Wochenansicht) */}
+            {viewMode !== 'day' && (
+              <ExpenseTrendCard expenses={expenses} currentDate={currentDate} viewMode={viewMode} />
+            )}
+
 
           </div>
         </div>
 
         {/* Page Dots */}
         <div className="flex justify-center gap-1.5 mt-3">
-          {[0, 1, 2].map(i => (
+          {(viewMode === 'day' ? [0, 1] : [0, 1, 2]).map(i => (
             <button
               key={i}
               onClick={() => emblaApi?.scrollTo(i)}
