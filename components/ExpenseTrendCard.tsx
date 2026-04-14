@@ -63,10 +63,11 @@ const CHART_HEIGHT = 76; // px, leaving room for labels
 interface ChartProps {
   days: DayData[];
   selectedDate: string | null;
+  cursorDate: string | null;
   onSelectDate: (date: string) => void;
 }
 
-function WeekChart({ days, selectedDate, onSelectDate }: ChartProps) {
+function WeekChart({ days, selectedDate, cursorDate, onSelectDate }: ChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastIndexRef = useRef<number>(-1);
   const isPointerDownRef = useRef(false);
@@ -126,6 +127,7 @@ function WeekChart({ days, selectedDate, onSelectDate }: ChartProps) {
     >
       {days.map((day, i) => {
         const isSelected = day.date === selectedDate;
+        const isCursor = day.date === cursorDate;
         const barH = day.total > 0
           ? Math.max((day.total / maxTotal) * CHART_HEIGHT, 8)
           : 4;
@@ -138,8 +140,12 @@ function WeekChart({ days, selectedDate, onSelectDate }: ChartProps) {
             style={{ height: '100%' }}
           >
             <div
-              className="w-3/4 flex flex-col justify-end items-center rounded-xl transition-colors duration-200"
-              style={{ height: '100%', backgroundColor: isSelected ? '#F5F5F4' : 'transparent' }}
+              className="w-3/4 flex flex-col justify-end items-center rounded-xl"
+              style={{
+                height: '100%',
+                backgroundColor: isCursor ? '#F5F5F4' : 'rgba(245,245,244,0)',
+                transition: isCursor ? 'background-color 80ms ease-in' : 'background-color 700ms ease-out',
+              }}
             >
               <motion.div
                 className="w-3/4 rounded-lg"
@@ -160,7 +166,7 @@ function WeekChart({ days, selectedDate, onSelectDate }: ChartProps) {
 
 // ─── MonthChart ──────────────────────────────────────────────────────────────
 
-function MonthChart({ days, selectedDate, onSelectDate }: ChartProps) {
+function MonthChart({ days, selectedDate, cursorDate, onSelectDate }: ChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastIndexRef = useRef<number>(-1);
   const isPointerDownRef = useRef(false);
@@ -219,6 +225,7 @@ const getIndexFromX = useCallback(
     >
       {days.map((day) => {
         const isSelected = day.date === selectedDate;
+        const isCursor = day.date === cursorDate;
         const barH = day.total > 0
           ? Math.max((day.total / maxTotal) * CHART_HEIGHT, 4)
           : 4;
@@ -226,10 +233,11 @@ const getIndexFromX = useCallback(
         return (
           <div
             key={day.date}
-            className="flex-1 flex items-end rounded-sm transition-colors duration-150"
+            className="flex-1 flex items-end rounded-sm"
             style={{
               height: CHART_HEIGHT,
-              backgroundColor: isSelected ? '#F5F5F4' : 'transparent',
+              backgroundColor: isCursor ? '#F5F5F4' : 'rgba(245,245,244,0)',
+              transition: isCursor ? 'background-color 80ms ease-in' : 'background-color 700ms ease-out',
             }}
           >
             <div
@@ -251,6 +259,19 @@ const getIndexFromX = useCallback(
 
 export function ExpenseTrendCard({ expenses, currentDate, viewMode }: ExpenseTrendCardProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [cursorDate, setCursorDate] = useState<string | null>(null);
+  const cursorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSelectDate = useCallback((date: string) => {
+    setSelectedDate(date);
+    setCursorDate(date);
+    if (cursorTimeoutRef.current) clearTimeout(cursorTimeoutRef.current);
+    cursorTimeoutRef.current = setTimeout(() => setCursorDate(null), 1200);
+  }, []);
+
+  useEffect(() => {
+    return () => { if (cursorTimeoutRef.current) clearTimeout(cursorTimeoutRef.current); };
+  }, []);
 
   const segment = viewMode === 'week' ? 'week' : 'month';
 
@@ -327,13 +348,15 @@ export function ExpenseTrendCard({ expenses, currentDate, viewMode }: ExpenseTre
             <WeekChart
               days={dayDataList}
               selectedDate={selectedDate}
-              onSelectDate={setSelectedDate}
+              cursorDate={cursorDate}
+              onSelectDate={handleSelectDate}
             />
           ) : (
             <MonthChart
               days={dayDataList}
               selectedDate={selectedDate}
-              onSelectDate={setSelectedDate}
+              cursorDate={cursorDate}
+              onSelectDate={handleSelectDate}
             />
           )}
         </motion.div>

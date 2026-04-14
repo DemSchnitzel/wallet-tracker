@@ -10,6 +10,7 @@ import { CATEGORY_META } from '@/lib/constants';
 import { ExpenseInputTab } from '@/components/ExpenseInputTab';
 import { ExpenseOverviewTab } from '@/components/ExpenseOverviewTab';
 import { EditExpenseModal } from '@/components/EditExpenseModal';
+import { SettingsModal } from '@/components/SettingsModal';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // Umbenannte Kategorien: alter Name → neuer Name
@@ -39,6 +40,7 @@ export default function App() {
 
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [activeTab, setActiveTab] = useState('eingabe');
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('expenses', JSON.stringify(expenses));
@@ -62,6 +64,21 @@ export default function App() {
     toast.error('Ausgabe gelöscht', { duration: 3000 });
   };
 
+  const handleImport = (imported: Expense[], mode: 'merge' | 'replace') => {
+    const migrated = migrateExpenses(imported);
+    if (mode === 'replace') {
+      setExpenses(migrated);
+      toast.success(`${migrated.length} Ausgaben importiert`);
+    } else {
+      setExpenses(prev => {
+        const existingIds = new Set(prev.map(e => e.id));
+        const newOnes = migrated.filter(e => !existingIds.has(e.id));
+        toast.success(`${newOnes.length} neue Ausgaben hinzugefügt`);
+        return [...prev, ...newOnes];
+      });
+    }
+  };
+
   return (
     <ErrorBoundary>
     <div className="min-h-screen bg-[#FEFEFE] text-zinc-900 font-sans pb-24 md:pb-12 selection:bg-zinc-200">
@@ -83,7 +100,10 @@ export default function App() {
               </TabsTrigger>
             </TabsList>
 
-            <button className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center shadow-sm hover:bg-zinc-800 transition-colors">
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center shadow-sm hover:bg-zinc-800 transition-colors"
+            >
               <HugeiconsIcon icon={Settings02Icon} className="w-5 h-5 text-white" />
             </button>
           </div>
@@ -106,6 +126,13 @@ export default function App() {
           </TabsContent>
         </main>
       </Tabs>
+
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        expenses={expenses}
+        onImport={handleImport}
+      />
 
       <EditExpenseModal
         expense={editingExpense}
