@@ -17,6 +17,7 @@ export const ExpenseInputTab = ({ expenses, onAddExpense, onEditExpense }: Expen
 
   const recentExpenses = useMemo(() => {
     return [...expenses]
+      .reverse()
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 3);
   }, [expenses]);

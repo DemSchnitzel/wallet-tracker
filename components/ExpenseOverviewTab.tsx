@@ -96,7 +96,9 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense }: ExpenseOverviewT
       if (!groups[expense.date]) groups[expense.date] = [];
       groups[expense.date].push(expense);
     });
-    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+    return Object.entries(groups)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, items]) => [date, [...items].reverse()] as [string, Expense[]]);
   }, [filteredExpenses]);
 
   const totalInView = useMemo(() =>
@@ -198,8 +200,8 @@ const categoryData = useMemo(() => {
               ) : (
                 <div className="flex items-center gap-3">
                   {/* Donut */}
-                  <div className="shrink-0 relative">
-                    <PieChart width={88} height={88}>
+                  <div className="shrink-0 relative" style={{ pointerEvents: 'none' }}>
+                    <PieChart width={88} height={88} style={{ outline: 'none' }}>
                       <Pie
                         data={categoryData}
                         cx={40}
@@ -212,6 +214,7 @@ const categoryData = useMemo(() => {
                         strokeWidth={2}
                         stroke="#fff"
                         cornerRadius={3}
+                        isAnimationActive={false}
                       >
                         {categoryData.map((entry) => (
                           <Cell key={entry.name} fill={entry.chartColor} />
