@@ -25,12 +25,15 @@ jobs:
       - name: App bauen
         run: npm run build
 
+      - name: lftp installieren
+        run: sudo apt-get install -y lftp
+
       - name: Zum Netcup Server hochladen
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USER }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          local-dir: ./dist/
-          server-dir: ${{ secrets.FTP_SERVER_DIR }}
+        run: |
+          lftp -e "
+            set ftp:ssl-allow yes;
+            set ssl:verify-certificate no;
+            open -u ${{ secrets.FTP_USER }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_HOST }};
+            mirror -R --delete ./dist/ ${{ secrets.FTP_SERVER_DIR }};
+            quit
+          "
