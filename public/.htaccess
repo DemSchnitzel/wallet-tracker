@@ -1,3 +1,15 @@
+# HTML nie cachen – damit Updates sofort wirksam werden
+<FilesMatch "\.(html)$">
+  Header always set Cache-Control "no-cache, no-store, must-revalidate"
+  Header always set Pragma "no-cache"
+  Header always set Expires "0"
+</FilesMatch>
+
+# JS/CSS/Assets lange cachen (Vite baut mit Hash-Dateinamen)
+<FilesMatch "\.(js|css|woff2?|ttf|svg|png|jpg|ico)$">
+  Header always set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+
 # Clickjacking verhindern
 Header always set X-Frame-Options "DENY"
 
