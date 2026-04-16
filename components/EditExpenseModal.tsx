@@ -53,7 +53,7 @@ export const EditExpenseModal = ({
 
   return (
     <Dialog open={!!expense} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg rounded-[2rem] border-zinc-100 p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-lg rounded-t-[2rem] sm:rounded-[2rem] border-zinc-100 p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="text-xl font-medium tracking-tight">Ausgabe bearbeiten</DialogTitle>
         </DialogHeader>

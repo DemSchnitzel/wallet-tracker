@@ -272,7 +272,7 @@ export const SettingsModal = ({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-w-lg rounded-[2rem] border-zinc-100 p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-lg rounded-t-[2rem] sm:rounded-[2rem] border-zinc-100 p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle className="text-xl font-medium tracking-tight">Einstellungen</DialogTitle>
         </DialogHeader>
