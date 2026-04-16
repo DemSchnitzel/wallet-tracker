@@ -25,7 +25,42 @@ function migrateExpenses(raw: Expense[]): Expense[] {
   });
 }
 
+function useUpdateCheck() {
+  useEffect(() => {
+    let knownBuildTime: number | null = null;
+    let toastShown = false;
+
+    async function check() {
+      try {
+        const res = await fetch('/version.json', { cache: 'no-store' });
+        if (!res.ok) return;
+        const { buildTime } = await res.json();
+        if (knownBuildTime === null) {
+          knownBuildTime = buildTime;
+        } else if (buildTime !== knownBuildTime && !toastShown) {
+          toastShown = true;
+          toast('Update verfügbar', {
+            duration: Infinity,
+            action: {
+              label: 'Aktualisieren',
+              onClick: () => window.location.reload(),
+            },
+          });
+        }
+      } catch {
+        // Netzwerkfehler ignorieren
+      }
+    }
+
+    check();
+    const interval = setInterval(check, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+}
+
 export default function App() {
+  useUpdateCheck();
+
   const [expenses, setExpenses] = useState<Expense[]>(() => {
     const saved = localStorage.getItem('expenses');
     if (!saved) return [];
