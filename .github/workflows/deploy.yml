@@ -32,7 +32,7 @@ jobs:
         run: |
           lftp -e "
             set ftp:ssl-allow yes;
-            set ssl:verify-certificate yes;
+            set ssl:verify-certificate no;
             open -u ${{ secrets.FTP_USER }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_HOST }};
             mirror -R --delete ./dist/ ${{ secrets.FTP_SERVER_DIR }};
             quit
