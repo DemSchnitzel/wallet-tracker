@@ -4,7 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import useEmblaCarousel from 'embla-carousel-react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Calendar01Icon } from '@hugeicons/core-free-icons';
+import { Calendar01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -121,13 +121,13 @@ export const ExpenseForm = ({
 
       {/* Category Carousel */}
       <div>
-        <div ref={emblaRef} className="overflow-hidden pt-1 pl-1 pr-1">
-          <div className="flex touch-pan-y pb-2">
+        <div ref={emblaRef} className="overflow-hidden pt-1 pr-1">
+          <div className="flex touch-pan-y pb-2 ml-0">
             {CATEGORIES.map((c, index) => {
               const Icon = CATEGORY_META[c].icon;
               const isActive = category === c;
               return (
-                <div key={c} className={`flex-[0_0_auto] ${index === 0 ? '' : 'pl-3 sm:pl-4'}`}>
+                <div key={c} className="flex-[0_0_auto] pl-3 sm:pl-4">
                   <button
                     type="button"
                     onClick={() => {
@@ -153,16 +153,27 @@ export const ExpenseForm = ({
       {/* Description + Date */}
       <div className="space-y-4">
         <div className="relative z-40">
-          <Input
-            placeholder="Wofür war das? (z.B. Rewe, Kino...)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            onFocus={() => setIsDescriptionFocused(true)}
-            onBlur={() => setTimeout(() => setIsDescriptionFocused(false), 200)}
-            required
-            autoComplete="off"
-            className="h-14 rounded-2xl bg-[#F6F6F7] border-none shadow-none focus-visible:ring-4 focus-visible:ring-zinc-100 transition-all text-base px-5"
-          />
+          <div className="relative">
+            <Input
+              placeholder="Wofür war das? (z.B. Rewe, Kino...)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onFocus={() => setIsDescriptionFocused(true)}
+              onBlur={() => setTimeout(() => setIsDescriptionFocused(false), 200)}
+              required
+              autoComplete="off"
+              className="h-14 rounded-2xl bg-[#F6F6F7] border-none shadow-none focus-visible:ring-4 focus-visible:ring-zinc-100 transition-all text-base px-5 pr-12"
+            />
+            {description && (
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); setDescription(''); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 transition-colors"
+              >
+                <HugeiconsIcon icon={Cancel01Icon} className="w-4 h-4" />
+              </button>
+            )}
+          </div>
           {isDescriptionFocused && description.trim() &&
             (descriptionSuggestions.descriptions.length > 0 || descriptionSuggestions.tags.length > 0) && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell } from 'recharts';
 import { format, parseISO, subMonths, addMonths, subWeeks, addWeeks, subDays, addDays, isSameWeek, getWeek, isToday, isYesterday } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -31,6 +31,10 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense }: ExpenseOverviewT
 
   // Secondary cards carousel
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: 'start', dragFree: false, skipSnaps: false, duration: 25 });
+
+  // Category filter carousel
+  const [categoryEmblaRef, categoryEmblaApi] = useEmblaCarousel({ loop: true, align: 'start', dragFree: true });
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeCard, setActiveCard] = useState(0);
 
   useEffect(() => {
@@ -39,6 +43,36 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense }: ExpenseOverviewT
     emblaApi.on('select', onSelect);
     return () => { emblaApi.off('select', onSelect); };
   }, [emblaApi]);
+
+  // Auto-scroll back to first active filter after 4s idle
+  useEffect(() => {
+    const categoryFilters = selectedFilters.filter(f => CATEGORIES.includes(f as Category));
+    if (categoryFilters.length === 0 || !categoryEmblaApi) {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      return;
+    }
+
+    const firstActiveIndex = CATEGORIES.findIndex(c => categoryFilters.includes(c));
+
+    const startTimer = () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(() => {
+        categoryEmblaApi.scrollTo(firstActiveIndex);
+      }, 4000);
+    };
+
+    const container = categoryEmblaApi.rootNode();
+    container.addEventListener('pointerdown', startTimer);
+    container.addEventListener('touchstart', startTimer);
+
+    startTimer();
+
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      container.removeEventListener('pointerdown', startTimer);
+      container.removeEventListener('touchstart', startTimer);
+    };
+  }, [selectedFilters, categoryEmblaApi]);
 
   // Current period expenses
   const expensesInView = useMemo(() => {
@@ -184,7 +218,7 @@ const categoryData = useMemo(() => {
                     ? 'Kein Vergleich'
                     : delta === 0
                     ? `Gleich wie ${previousPeriodData!.label.replace('als ', '')}`
-                    : `${delta < 0 ? '↑' : '↓'} ${formatCurrency(Math.abs(delta))} ${delta < 0 ? 'weniger' : 'mehr'} ${previousPeriodData!.label}`}
+                    : `${delta < 0 ? '↑' : '↓'} ${formatCurrency(Math.abs(delta))} ${delta < 0 ? 'mehr' : 'weniger'} gespart ${previousPeriodData!.label}`}
                 </div>
               </div>
             </div>
@@ -283,11 +317,8 @@ const categoryData = useMemo(() => {
               <HugeiconsIcon icon={Search01Icon} className="w-5 h-5 text-zinc-400" />
             </div>
 
-            {selectedFilters.map(filter => (
+            {selectedFilters.filter(f => !CATEGORIES.includes(f as Category)).map(filter => (
               <div key={filter} className="flex items-center gap-1.5 bg-zinc-100 text-zinc-800 px-3 py-1.5 rounded-xl text-sm font-medium">
-                {CATEGORIES.includes(filter as Category) && (
-                  <HugeiconsIcon icon={CATEGORY_META[filter as Category].icon} className="w-3.5 h-3.5 opacity-70" />
-                )}
                 <span>{filter}</span>
                 <button onClick={() => setSelectedFilters(selectedFilters.filter(f => f !== filter))} className="ml-1 text-zinc-400 hover:text-zinc-900 transition-colors">
                   <HugeiconsIcon icon={Cancel01Icon} className="w-4 h-4" />
@@ -297,55 +328,27 @@ const categoryData = useMemo(() => {
 
             <input
               type="text"
-              placeholder={selectedFilters.length === 0 ? 'Suchen nach Einträgen oder Kategorien...' : ''}
+              placeholder={selectedFilters.filter(f => !CATEGORIES.includes(f as Category)).length === 0 ? 'Suchen nach Einträgen...' : ''}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
               className="flex-1 min-w-[140px] bg-transparent outline-none text-base text-zinc-900 py-1.5"
             />
+            {searchQuery && (
+              <button
+                onMouseDown={(e) => { e.preventDefault(); setSearchQuery(''); }}
+                className="text-zinc-400 hover:text-zinc-900 transition-colors"
+              >
+                <HugeiconsIcon icon={Cancel01Icon} className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
-          {isSearchFocused && searchQuery.trim() && (searchSuggestions.descriptions.length > 0 || searchSuggestions.tags.length > 0 || searchSuggestions.categories.length > 0) && (
+          {isSearchFocused && searchQuery.trim() && searchSuggestions.descriptions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
-              {searchSuggestions.categories.length > 0 && (
-                <div className="p-2">
-                  <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-3 py-1.5">Kategorien</div>
-                  {searchSuggestions.categories.map(category => (
-                    <button key={category} onClick={() => {
-                      if (!selectedFilters.includes(category)) setSelectedFilters([...selectedFilters, category]);
-                      setSearchQuery('');
-                    }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-zinc-50 rounded-xl flex items-center gap-3 transition-colors">
-                      <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
-                        <HugeiconsIcon icon={CATEGORY_META[category]?.icon} className="w-4 h-4" />
-                      </div>
-                      <span className="font-medium text-zinc-700">{category}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {searchSuggestions.tags.length > 0 && (
-                <div className={`p-2 ${searchSuggestions.categories.length > 0 ? 'border-t border-zinc-100' : ''}`}>
-                  <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-3 py-1.5">Vorschläge</div>
-                  {searchSuggestions.tags.map(({ tag, category }) => (
-                    <button key={tag} onClick={() => {
-                      const t = tag.charAt(0).toUpperCase() + tag.slice(1);
-                      if (!selectedFilters.includes(t)) setSelectedFilters([...selectedFilters, t]);
-                      setSearchQuery('');
-                    }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-zinc-50 rounded-xl flex items-center justify-between transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
-                          <HugeiconsIcon icon={CATEGORY_META[category]?.icon} className="w-4 h-4" />
-                        </div>
-                        <span className="font-medium text-zinc-700">{tag.charAt(0).toUpperCase() + tag.slice(1)}</span>
-                      </div>
-                      <span className="text-xs text-zinc-400">{category}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
               {searchSuggestions.descriptions.length > 0 && (
-                <div className={`p-2 ${searchSuggestions.tags.length > 0 || searchSuggestions.categories.length > 0 ? 'border-t border-zinc-100' : ''}`}>
+                <div className="p-2">
                   <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-3 py-1.5">Einträge</div>
                   {searchSuggestions.descriptions.map(item => (
                     <button key={item.description} onClick={() => {
@@ -353,7 +356,7 @@ const categoryData = useMemo(() => {
                       setSearchQuery('');
                     }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-zinc-50 rounded-xl flex items-center justify-between transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-600" style={{ backgroundColor: CATEGORY_META[item.category]?.color ?? '#F4F4F5' }}>
                           <HugeiconsIcon icon={CATEGORY_META[item.category]?.icon} className="w-4 h-4" />
                         </div>
                         <span className="font-medium text-zinc-700">{item.description}</span>
@@ -365,6 +368,38 @@ const categoryData = useMemo(() => {
               )}
             </div>
           )}
+        </div>
+
+        {/* Category Filter Carousel */}
+        <div className="overflow-hidden -my-2 py-2">
+          <div ref={categoryEmblaRef}>
+          <div className="flex touch-pan-y ml-0">
+            {CATEGORIES.map((c) => {
+              const Icon = CATEGORY_META[c].icon;
+              const isActive = selectedFilters.includes(c);
+              return (
+                <div key={c} className="flex-[0_0_auto] pl-3 sm:pl-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFilters(prev =>
+                        prev.includes(c) ? prev.filter(f => f !== c) : [...prev, c]
+                      );
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
+                      isActive
+                        ? 'bg-zinc-900 text-white shadow-md shadow-zinc-900/20 scale-105'
+                        : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                    }`}
+                  >
+                    <HugeiconsIcon icon={Icon} className={`w-4 h-4 ${isActive ? 'text-zinc-300' : 'text-zinc-500'}`} />
+                    <span className="whitespace-nowrap">{c}</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          </div>
         </div>
       </div>
 

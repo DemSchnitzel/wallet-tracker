@@ -58,7 +58,7 @@ function computeDayData(expenses: Expense[], dates: string[]): DayData[] {
 // ─── WeekChart ───────────────────────────────────────────────────────────────
 
 const DAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-const CHART_HEIGHT = 76; // px, leaving room for labels
+const CHART_HEIGHT = 100; // px, matches h-[100px] container
 
 interface ChartProps {
   days: DayData[];
@@ -86,6 +86,7 @@ function WeekChart({ days, selectedDate, cursorDate, onSelectDate }: ChartProps)
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      e.stopPropagation();
       containerRef.current?.setPointerCapture(e.pointerId);
       isPointerDownRef.current = true;
       const idx = getIndexFromX(e.clientX);
@@ -119,7 +120,7 @@ function WeekChart({ days, selectedDate, cursorDate, onSelectDate }: ChartProps)
   return (
     <div
       ref={containerRef}
-      className="h-[100px] flex gap-2 cursor-pointer select-none touch-none"
+      className="h-[100px] flex gap-2 px-3 cursor-pointer select-none touch-none"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -129,34 +130,40 @@ function WeekChart({ days, selectedDate, cursorDate, onSelectDate }: ChartProps)
         const isSelected = day.date === selectedDate;
         const isCursor = day.date === cursorDate;
         const barH = day.total > 0
-          ? Math.max((day.total / maxTotal) * CHART_HEIGHT, 8)
+          ? Math.max((day.total / maxTotal) * (CHART_HEIGHT - 24), 8)
           : 4;
 
         return (
           <div
             key={day.date}
             aria-label={`${DAY_LABELS[i]}: ${formatCurrency(day.total)}`}
-            className="flex-1 flex flex-col justify-end items-center"
+            className="flex-1 flex flex-col items-center"
             style={{ height: '100%' }}
           >
-            <div
-              className="w-3/4 flex flex-col justify-end items-center rounded-xl"
-              style={{
-                height: '100%',
-                backgroundColor: isCursor ? '#F5F5F4' : 'rgba(245,245,244,0)',
-                transition: isCursor ? 'background-color 80ms ease-in' : 'background-color 700ms ease-out',
-              }}
-            >
-              <motion.div
-                className="w-3/4 rounded-lg"
-                animate={{
-                  height: barH,
-                  backgroundColor: isSelected ? '#18181b' : day.total > 0 ? '#e4e4e7' : '#efefef',
+            <div className="w-3/4 flex-1 flex flex-col justify-end items-center">
+              <div
+                className="w-3/4 rounded-lg flex flex-col justify-end items-center"
+                style={{
+                  flex: 1,
+                  marginBottom: '6px',
+                  backgroundColor: isCursor ? '#F5F5F4' : 'rgba(245,245,244,0)',
+                  transition: isCursor ? 'background-color 80ms ease-in' : 'background-color 700ms ease-out',
                 }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-                style={{ height: barH, marginBottom: '6px' }}
-              />
+              >
+                <motion.div
+                  className="w-full rounded-lg"
+                  animate={{
+                    height: barH,
+                    backgroundColor: isSelected ? '#18181b' : day.total > 0 ? '#e4e4e7' : '#efefef',
+                  }}
+                  transition={{ duration: 0.3, ease: 'easeOut' }}
+                  style={{ height: barH }}
+                />
+              </div>
             </div>
+            <span className="text-[10px] font-medium mt-1" style={{ color: day.date === selectedDate ? '#18181b' : '#a1a1aa' }}>
+              {DAY_LABELS[i]}
+            </span>
           </div>
         );
       })}
@@ -184,6 +191,7 @@ const getIndexFromX = useCallback(
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      e.stopPropagation();
       containerRef.current?.setPointerCapture(e.pointerId);
       isPointerDownRef.current = true;
       const idx = getIndexFromX(e.clientX);
@@ -235,7 +243,7 @@ const getIndexFromX = useCallback(
             key={day.date}
             className="flex-1 flex items-end rounded-sm"
             style={{
-              height: CHART_HEIGHT,
+              height: '100%',
               backgroundColor: isCursor ? '#F5F5F4' : 'rgba(245,245,244,0)',
               transition: isCursor ? 'background-color 80ms ease-in' : 'background-color 700ms ease-out',
             }}

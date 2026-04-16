@@ -84,8 +84,8 @@ export default function App() {
     <div className="min-h-screen bg-[#FEFEFE] text-zinc-900 font-sans pb-24 md:pb-12 selection:bg-zinc-200">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <header className="pt-8 pb-4 sticky top-0 z-50 bg-[#FEFEFE]/80 backdrop-blur-xl">
-          <div className="max-w-xl mx-auto px-6 flex items-center justify-between">
-            <TabsList className="relative flex justify-start gap-4 bg-transparent p-0">
+          <div className="max-w-xl mx-auto px-4 flex items-center justify-between">
+            <TabsList className="relative flex justify-start gap-8 bg-transparent p-0">
               <TabsTrigger
                 value="eingabe"
                 className="text-xl font-normal tracking-tight text-zinc-400 hover:text-zinc-600 data-active:text-zinc-900 data-active:bg-transparent data-active:shadow-none transition-colors px-0 py-2"
