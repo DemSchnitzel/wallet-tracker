@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Download01Icon, Upload01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
+import { Download01Icon, Upload01Icon, Cancel01Icon, RefreshIcon } from '@hugeicons/core-free-icons';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -434,6 +434,22 @@ export const SettingsModal = ({
                 </Button>
               </>
             )}
+          </section>
+
+          {/* ── App aktualisieren ── */}
+          <section className="bg-zinc-50 rounded-2xl p-4 space-y-3">
+            <div>
+              <p className="text-sm font-medium text-zinc-700 mb-0.5">App aktualisieren</p>
+              <p className="text-xs text-zinc-400">Neueste Version laden und App neu starten.</p>
+            </div>
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outline"
+              className="w-full h-11 rounded-xl border-zinc-200 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+            >
+              <HugeiconsIcon icon={RefreshIcon} className="w-4 h-4 mr-2" />
+              Jetzt aktualisieren
+            </Button>
           </section>
 
         </div>
