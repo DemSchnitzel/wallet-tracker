@@ -5,11 +5,10 @@ import { de } from 'date-fns/locale';
 import useEmblaCarousel from 'embla-carousel-react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  ArrowLeft01Icon, ArrowRight01Icon, Wallet02Icon, ChartUpIcon, Search01Icon, Cancel01Icon, ArrowDown01Icon
+  ArrowLeft01Icon, ArrowRight01Icon, Wallet02Icon, ChartUpIcon, Tag01Icon, Search01Icon, Cancel01Icon
 } from '@hugeicons/core-free-icons';
 
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ExpenseCard } from '@/components/ExpenseCard';
 import { ExpenseTrendCard } from '@/components/ExpenseTrendCard';
 import { Expense, Category, CATEGORIES } from '@/types';
@@ -158,32 +157,35 @@ const categoryData = useMemo(() => {
   return (
     <div className="space-y-8 animate-in fade-in-50 duration-500 slide-in-from-bottom-4">
       {/* View Mode & Date Navigation */}
-      <div className="flex items-center justify-between">
-        <DropdownMenu>
-          <DropdownMenuTrigger render={
-            <Button variant="ghost" className="h-10 px-2 -ml-2 rounded-xl hover:bg-zinc-100 text-zinc-900 font-medium text-base flex items-center gap-2" />
-          }>
-            {viewMode === 'month' && 'Monatsansicht'}
-            {viewMode === 'week' && 'Wochenansicht'}
-            {viewMode === 'day' && 'Tagesansicht'}
-            <HugeiconsIcon icon={ArrowDown01Icon} className="w-4 h-4 text-zinc-500" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="rounded-2xl border-zinc-100 shadow-xl p-2 min-w-[200px]">
-            <DropdownMenuItem onClick={() => setViewMode('month')} className="rounded-xl px-3 py-2.5 cursor-pointer">Monatsansicht</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setViewMode('week')} className="rounded-xl px-3 py-2.5 cursor-pointer">Wochenansicht</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setViewMode('day')} className="rounded-xl px-3 py-2.5 cursor-pointer">Tagesansicht</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center bg-zinc-100 rounded-xl p-1 gap-1">
+          {(['month', 'week', 'day'] as const).map((mode) => {
+            const labels = { month: 'Monat', week: 'Woche', day: 'Tag' };
+            return (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  viewMode === mode
+                    ? 'bg-white text-zinc-900 shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-700'
+                }`}
+              >
+                {labels[mode]}
+              </button>
+            );
+          })}
+        </div>
 
-        <div className="flex items-center gap-1">
+        <div className="relative flex items-center justify-center gap-3 mt-3">
           <Button variant="ghost" size="icon" onClick={() => {
             if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1));
             else if (viewMode === 'week') setCurrentDate(subWeeks(currentDate, 1));
             else setCurrentDate(subDays(currentDate, 1));
-          }} className="h-8 w-8 rounded-full hover:bg-zinc-100 text-zinc-500">
-            <HugeiconsIcon icon={ArrowLeft01Icon} className="w-5 h-5" />
+          }} className="h-9 w-9 shrink-0 rounded-xl hover:bg-zinc-100 text-zinc-500">
+            <HugeiconsIcon icon={ArrowLeft01Icon} className="w-6 h-6" />
           </Button>
-          <div className="text-center font-medium text-zinc-900 text-sm min-w-[90px]">
+          <div className="text-center font-medium text-zinc-900 text-sm w-[110px]">
             {viewMode === 'month' && format(currentDate, 'MMMM yyyy', { locale: de })}
             {viewMode === 'week' && `KW ${getWeek(currentDate, { weekStartsOn: 1 })} ${format(currentDate, 'yyyy')}`}
             {viewMode === 'day' && format(currentDate, 'dd. MMM yyyy', { locale: de })}
@@ -192,19 +194,35 @@ const categoryData = useMemo(() => {
             if (viewMode === 'month') setCurrentDate(addMonths(currentDate, 1));
             else if (viewMode === 'week') setCurrentDate(addWeeks(currentDate, 1));
             else setCurrentDate(addDays(currentDate, 1));
-          }} className="h-8 w-8 rounded-full hover:bg-zinc-100 text-zinc-500">
-            <HugeiconsIcon icon={ArrowRight01Icon} className="w-5 h-5" />
+          }} className="h-9 w-9 shrink-0 rounded-xl hover:bg-zinc-100 text-zinc-500">
+            <HugeiconsIcon icon={ArrowRight01Icon} className="w-6 h-6" />
           </Button>
+          {(() => {
+            const today = new Date();
+            const isCurrentPeriod =
+              viewMode === 'month' ? format(currentDate, 'yyyy-MM') === format(today, 'yyyy-MM') :
+              viewMode === 'week'  ? isSameWeek(currentDate, today, { weekStartsOn: 1 }) :
+                                     isToday(currentDate);
+            if (isCurrentPeriod) return null;
+            return (
+              <button
+                onClick={() => setCurrentDate(new Date())}
+                className="absolute right-0 text-xs font-medium text-zinc-500 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-3 py-1.5 rounded-xl transition-colors"
+              >
+                Heute
+              </button>
+            );
+          })()}
         </div>
       </div>
 
       {/* Summary Cards Carousel */}
-      <div>
+      <div className="-mt-4">
         <div className="overflow-hidden -mx-1 px-1 -mt-1 pt-1 -mb-6 pb-6" ref={emblaRef}>
           <div className="flex gap-3">
 
             {/* Card 1: Gesamtausgaben */}
-            <div className="flex-[0_0_80%] bg-zinc-900 text-white rounded-[2rem] p-6 shadow-lg shadow-zinc-900/20 flex flex-col justify-between min-h-[120px]">
+            <div className="flex-[0_0_80%] bg-zinc-900 text-white rounded-[2rem] p-6 shadow-lg shadow-zinc-900/20 flex flex-col justify-between min-h-[220px]">
               <div className="text-zinc-400 text-sm font-medium flex items-center gap-2">
                 <HugeiconsIcon icon={Wallet02Icon} className="w-4 h-4 text-zinc-500" />
                 Gesamtausgaben
@@ -224,15 +242,20 @@ const categoryData = useMemo(() => {
             </div>
 
             {/* Card 2: Kategorien Donut */}
-            <div className="flex-[0_0_80%] bg-white rounded-[2rem] p-5 shadow-sm border border-zinc-100 min-h-[120px]">
+            <div className="flex-[0_0_80%] bg-white rounded-[2rem] p-5 shadow-sm border border-zinc-100 min-h-[220px] flex flex-col">
               <div className="text-zinc-500 text-sm font-medium flex items-center gap-2 mb-2">
-                <HugeiconsIcon icon={ChartUpIcon} className="w-4 h-4 text-zinc-400" />
+                <HugeiconsIcon icon={Tag01Icon} className="w-4 h-4 text-zinc-400" />
                 Kategorien
               </div>
-              {categoryData.length === 0 ? (
-                <div className="text-sm text-zinc-400 mt-4">Keine Daten</div>
+              {categoryData.length === 0 || totalInView === 0 ? (
+                <div className="flex-1 flex items-center gap-3">
+                  <div className="shrink-0 w-[88px] h-[88px] rounded-full border-[14px] border-zinc-100 flex items-center justify-center">
+                    <span className="text-xs font-semibold text-zinc-300">0</span>
+                  </div>
+                  <div className="text-sm text-zinc-400">Keine Daten</div>
+                </div>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex-1 flex items-center gap-3">
                   {/* Donut */}
                   <div className="shrink-0 relative" style={{ pointerEvents: 'none' }}>
                     <PieChart width={88} height={88} style={{ outline: 'none' }}>
@@ -320,8 +343,8 @@ const categoryData = useMemo(() => {
             {selectedFilters.filter(f => !CATEGORIES.includes(f as Category)).map(filter => (
               <div key={filter} className="flex items-center gap-1.5 bg-zinc-100 text-zinc-800 px-3 py-1.5 rounded-xl text-sm font-medium">
                 <span>{filter}</span>
-                <button onClick={() => setSelectedFilters(selectedFilters.filter(f => f !== filter))} className="ml-1 text-zinc-400 hover:text-zinc-900 transition-colors">
-                  <HugeiconsIcon icon={Cancel01Icon} className="w-4 h-4" />
+                <button onClick={() => setSelectedFilters(selectedFilters.filter(f => f !== filter))} className="ml-1 p-0.5 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200 transition-colors">
+                  <HugeiconsIcon icon={Cancel01Icon} className="w-5 h-5" />
                 </button>
               </div>
             ))}
@@ -338,9 +361,9 @@ const categoryData = useMemo(() => {
             {searchQuery && (
               <button
                 onMouseDown={(e) => { e.preventDefault(); setSearchQuery(''); }}
-                className="text-zinc-400 hover:text-zinc-900 transition-colors"
+                className="p-1 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200 transition-colors"
               >
-                <HugeiconsIcon icon={Cancel01Icon} className="w-4 h-4" />
+                <HugeiconsIcon icon={Cancel01Icon} className="w-5 h-5" />
               </button>
             )}
           </div>

@@ -168,9 +168,9 @@ export const ExpenseForm = ({
               <button
                 type="button"
                 onMouseDown={(e) => { e.preventDefault(); setDescription(''); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200 transition-colors"
               >
-                <HugeiconsIcon icon={Cancel01Icon} className="w-4 h-4" />
+                <HugeiconsIcon icon={Cancel01Icon} className="w-5 h-5" />
               </button>
             )}
           </div>

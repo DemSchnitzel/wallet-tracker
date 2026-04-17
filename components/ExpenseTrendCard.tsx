@@ -316,7 +316,7 @@ export function ExpenseTrendCard({ expenses, currentDate, viewMode }: ExpenseTre
 
 
   return (
-    <div className="flex-[0_0_80%] bg-white rounded-[2rem] p-5 shadow-sm border border-zinc-100 flex flex-col gap-3">
+    <div className="flex-[0_0_80%] bg-white rounded-[2rem] p-5 shadow-sm border border-zinc-100 flex flex-col gap-3 min-h-[220px]">
       {/* Label */}
       <div className="text-zinc-500 text-sm font-medium flex items-center gap-2">
         <HugeiconsIcon icon={ChartUpIcon} className="w-4 h-4 text-zinc-400" />
