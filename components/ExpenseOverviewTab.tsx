@@ -1,32 +1,39 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell } from 'recharts';
-import { format, parseISO, subMonths, addMonths, subWeeks, addWeeks, subDays, addDays, isSameWeek, getWeek, isToday, isYesterday } from 'date-fns';
+import { format, parseISO, subMonths, addMonths, subWeeks, addWeeks, subDays, addDays, isSameWeek, getWeek, isToday, isYesterday, getDaysInMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 import useEmblaCarousel from 'embla-carousel-react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  ArrowLeft01Icon, ArrowRight01Icon, Wallet02Icon, ChartUpIcon, Tag01Icon, Search01Icon, Cancel01Icon
+  ArrowLeft01Icon, ArrowRight01Icon, Wallet02Icon, Tag01Icon, Search01Icon, Cancel01Icon, ArrowExpand01Icon
 } from '@hugeicons/core-free-icons';
 
 import { Button } from '@/components/ui/button';
 import { ExpenseCard } from '@/components/ExpenseCard';
 import { ExpenseTrendCard } from '@/components/ExpenseTrendCard';
-import { Expense, Category, CATEGORIES } from '@/types';
+import { TotalCard } from '@/components/BudgetCard';
+import { TotalDetailSheet } from '@/components/BudgetDetailSheet';
+import { KategorienDetailSheet } from '@/components/KategorienDetailSheet';
+import { TrendDetailSheet } from '@/components/TrendDetailSheet';
+import { Expense, Category, CATEGORIES, Budget } from '@/types';
 import { CATEGORY_META, formatCurrency } from '@/lib/constants';
 import { useDescriptionSuggestions } from '@/lib/useDescriptionSuggestions';
 
 interface ExpenseOverviewTabProps {
   expenses: Expense[];
   onEditExpense: (expense: Expense) => void;
+  budget: Budget;
 }
 
-export const ExpenseOverviewTab = ({ expenses, onEditExpense }: ExpenseOverviewTabProps) => {
+export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseOverviewTabProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [donutShowAmounts, setDonutShowAmounts] = useState(false);
+  const [isTotalSheetOpen, setIsTotalSheetOpen] = useState(false);
+  const [isKategorienSheetOpen, setIsKategorienSheetOpen] = useState(false);
+  const [isTrendSheetOpen, setIsTrendSheetOpen] = useState(false);
 
   // Secondary cards carousel
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: 'start', dragFree: false, skipSnaps: false, duration: 25 });
@@ -105,7 +112,7 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense }: ExpenseOverviewT
       viewMode === 'week'  ? 'als letzte Woche' :
                              'als gestern';
 
-    return { total: prevTotal, label };
+    return { total: prevTotal, label, expenses: prevExpenses };
   }, [expenses, currentDate, viewMode]);
 
   const searchSuggestions = useDescriptionSuggestions(expenses, searchQuery);
@@ -138,21 +145,29 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense }: ExpenseOverviewT
     expensesInView.reduce((sum, e) => sum + e.amount, 0),
   [expensesInView]);
 
-const categoryData = useMemo(() => {
+  // Average spend per day for the current period
+  const avgPerDay = useMemo(() => {
+    if (viewMode === 'week') return totalInView > 0 ? totalInView / 7 : null;
+    if (viewMode === 'month') {
+      const today = new Date();
+      const isCurrentMonthView = format(currentDate, 'yyyy-MM') === format(today, 'yyyy-MM');
+      const days = isCurrentMonthView ? today.getDate() : getDaysInMonth(currentDate);
+      return totalInView > 0 ? totalInView / days : null;
+    }
+    return null;
+  }, [totalInView, currentDate, viewMode]);
+
+  const categoryData = useMemo(() => {
     const totals: Record<string, number> = {};
     expensesInView.forEach(e => { totals[e.category] = (totals[e.category] || 0) + e.amount; });
     return Object.entries(totals)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
       .map(([name, value]) => ({
         name,
         value,
         chartColor: CATEGORY_META[name as Category]?.chartColor ?? '#A1A1AA',
       }));
   }, [expensesInView]);
-
-  // Delta for comparison card
-  const delta = previousPeriodData ? totalInView - previousPeriodData.total : null;
 
   return (
     <div className="space-y-8 animate-in fade-in-50 duration-500 slide-in-from-bottom-4">
@@ -221,32 +236,29 @@ const categoryData = useMemo(() => {
         <div className="overflow-hidden -mx-1 px-1 -mt-1 pt-1 -mb-6 pb-6" ref={emblaRef}>
           <div className="flex gap-3">
 
-            {/* Card 1: Gesamtausgaben */}
-            <div className="flex-[0_0_80%] bg-zinc-900 text-white rounded-[2rem] p-6 shadow-lg shadow-zinc-900/20 flex flex-col justify-between min-h-[220px]">
-              <div className="text-zinc-400 text-sm font-medium flex items-center gap-2">
-                <HugeiconsIcon icon={Wallet02Icon} className="w-4 h-4 text-zinc-500" />
-                Gesamtausgaben
-              </div>
-              <div>
-                <div className="text-4xl sm:text-5xl font-light tracking-tight mt-4">
-                  {formatCurrency(totalInView)}
-                </div>
-                <div className={`text-xs font-medium mt-1.5 ${delta === null ? 'text-zinc-600' : delta < 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {delta === null
-                    ? 'Kein Vergleich'
-                    : delta === 0
-                    ? `Gleich wie ${previousPeriodData!.label.replace('als ', '')}`
-                    : `${delta < 0 ? '↑' : '↓'} ${formatCurrency(Math.abs(delta))} ${delta < 0 ? 'mehr' : 'weniger'} gespart ${previousPeriodData!.label}`}
-                </div>
-              </div>
-            </div>
+            {/* Card 1: Gesamtausgaben / Budget (merged) */}
+            <TotalCard
+              totalInView={totalInView}
+              budget={budget}
+              currentDate={currentDate}
+              viewMode={viewMode}
+              onExpand={() => setIsTotalSheetOpen(true)}
+            />
 
             {/* Card 2: Kategorien Donut */}
-            <div className="flex-[0_0_80%] bg-white rounded-[2rem] p-5 shadow-sm border border-zinc-100 min-h-[220px] flex flex-col">
-              <div className="text-zinc-500 text-sm font-medium flex items-center gap-2 mb-2">
-                <HugeiconsIcon icon={Tag01Icon} className="w-4 h-4 text-zinc-400" />
-                Kategorien
+            <div
+              className="flex-[0_0_80%] bg-white rounded-[2rem] p-5 shadow-sm border border-zinc-100 min-h-[220px] flex flex-col cursor-pointer active:scale-[0.98] transition-transform duration-150 select-none"
+              onClick={() => setIsKategorienSheetOpen(true)}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-zinc-500 text-sm font-medium flex items-center gap-2">
+                  <HugeiconsIcon icon={Tag01Icon} className="w-4 h-4 text-zinc-400" />
+                  Kategorien
+                </div>
+                <HugeiconsIcon icon={ArrowExpand01Icon} className="w-4 h-4 text-zinc-300" />
               </div>
+
               {categoryData.length === 0 || totalInView === 0 ? (
                 <div className="flex-1 flex items-center gap-3">
                   <div className="shrink-0 w-[88px] h-[88px] rounded-full border-[14px] border-zinc-100 flex items-center justify-center">
@@ -278,29 +290,22 @@ const categoryData = useMemo(() => {
                         ))}
                       </Pie>
                     </PieChart>
-                    {/* Center label */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <span className="text-xs font-semibold text-zinc-700">{categoryData.length}</span>
-                    </div>
                   </div>
-                  {/* Legend */}
-                  <div className="flex flex-col gap-2 min-w-0 flex-1">
-                    {categoryData.slice(0, 4).map(entry => (
+                  {/* Legend – top 3 + overflow hint */}
+                  <div className="flex flex-col gap-2.5 min-w-0 flex-1">
+                    {categoryData.slice(0, 3).map(entry => (
                       <div key={entry.name} className="flex items-center gap-2 min-w-0">
                         <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.chartColor }} />
                         <span className="text-xs text-zinc-600 truncate flex-1">{entry.name}</span>
-                        <button
-                          onClick={() => setDonutShowAmounts(v => !v)}
-                          className="text-xs font-medium text-zinc-400 shrink-0 tabular-nums transition-opacity active:opacity-50"
-                        >
-                          {donutShowAmounts
-                            ? formatCurrency(entry.value)
-                            : `${Math.round((entry.value / totalInView) * 100)}%`}
-                        </button>
+                        <span className="text-xs font-medium text-zinc-400 shrink-0 tabular-nums">
+                          {formatCurrency(entry.value)}
+                        </span>
                       </div>
                     ))}
-                    {categoryData.length > 4 && (
-                      <div className="text-xs text-zinc-400">+{categoryData.length - 4} weitere</div>
+                    {categoryData.length > 3 && (
+                      <span className="text-xs text-zinc-300 tabular-nums">
+                        + {categoryData.length - 3} weitere
+                      </span>
                     )}
                   </div>
                 </div>
@@ -309,7 +314,12 @@ const categoryData = useMemo(() => {
 
             {/* Card 3: Ausgaben-Trend (nur Monats- und Wochenansicht) */}
             {viewMode !== 'day' && (
-              <ExpenseTrendCard expenses={expenses} currentDate={currentDate} viewMode={viewMode} />
+              <ExpenseTrendCard
+                expenses={expenses}
+                currentDate={currentDate}
+                viewMode={viewMode}
+                onExpand={() => setIsTrendSheetOpen(true)}
+              />
             )}
 
 
@@ -318,7 +328,9 @@ const categoryData = useMemo(() => {
 
         {/* Page Dots */}
         <div className="flex justify-center gap-1.5 mt-3">
-          {(viewMode === 'day' ? [0, 1] : [0, 1, 2]).map(i => (
+          {Array.from({
+            length: viewMode === 'day' ? 2 : 3
+          }, (_, i) => i).map(i => (
             <button
               key={i}
               onClick={() => emblaApi?.scrollTo(i)}
@@ -425,6 +437,38 @@ const categoryData = useMemo(() => {
           </div>
         </div>
       </div>
+
+      {/* Trend Detail Sheet */}
+      {viewMode !== 'day' && (
+        <TrendDetailSheet
+          isOpen={isTrendSheetOpen}
+          onClose={() => setIsTrendSheetOpen(false)}
+          expenses={expensesInView}
+          currentDate={currentDate}
+          viewMode={viewMode}
+        />
+      )}
+
+      {/* Kategorien Detail Sheet */}
+      <KategorienDetailSheet
+        isOpen={isKategorienSheetOpen}
+        onClose={() => setIsKategorienSheetOpen(false)}
+        expenses={expensesInView}
+        totalInView={totalInView}
+      />
+
+      {/* Total / Budget Detail Sheet */}
+      <TotalDetailSheet
+        isOpen={isTotalSheetOpen}
+        onClose={() => setIsTotalSheetOpen(false)}
+        totalInView={totalInView}
+        avgPerDay={avgPerDay}
+        previousPeriodData={previousPeriodData}
+        viewMode={viewMode}
+        budget={budget}
+        expenses={expensesInView}
+        currentDate={currentDate}
+      />
 
       {/* Expenses List */}
       <div className="space-y-6 pb-8">

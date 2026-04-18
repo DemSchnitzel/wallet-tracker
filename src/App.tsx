@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Settings02Icon } from '@hugeicons/core-free-icons';
+import { User02Icon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,7 +11,64 @@ import { ExpenseInputTab } from '@/components/ExpenseInputTab';
 import { ExpenseOverviewTab } from '@/components/ExpenseOverviewTab';
 import { EditExpenseModal } from '@/components/EditExpenseModal';
 import { SettingsModal } from '@/components/SettingsModal';
+import { ChangelogSheet } from '@/components/ChangelogSheet';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useBudget } from '@/lib/useBudget';
+
+const SEEN_VERSION_KEY = 'wallet_seen_version';
+
+interface ChangelogEntry { type: 'new' | 'improved' | 'fixed'; text: string; }
+interface ChangelogRelease { version: string; date: string; entries: ChangelogEntry[]; }
+
+function useChangelog() {
+  const [unread, setUnread] = useState(false);
+  const [releases, setReleases] = useState<ChangelogRelease[]>([]);
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const [vRes, cRes] = await Promise.all([
+          fetch('/version.json', { cache: 'no-store' }),
+          fetch('/changelog.json', { cache: 'no-store' }),
+        ]);
+        if (!vRes.ok || !cRes.ok) return;
+        const { version } = await vRes.json();
+        const changelog: ChangelogRelease[] = await cRes.json();
+        setReleases(changelog);
+
+        const seen = localStorage.getItem(SEEN_VERSION_KEY);
+        if (seen === null) {
+          // Erstinstallation – still speichern, kein Badge
+          localStorage.setItem(SEEN_VERSION_KEY, version);
+        } else if (seen !== version) {
+          setUnread(true);
+          toast('App aktualisiert', {
+            description: 'Schau was neu ist.',
+            duration: 8000,
+            action: { label: 'Was ist neu?', onClick: () => setUnread(u => { markSeen(version); return false as unknown as typeof u; }) },
+          });
+        }
+      } catch {
+        // Netzwerkfehler ignorieren
+      }
+    }
+    init();
+  }, []);
+
+  function markSeen(version?: string) {
+    if (version) {
+      localStorage.setItem(SEEN_VERSION_KEY, version);
+    } else {
+      fetch('/version.json', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(({ version: v }) => localStorage.setItem(SEEN_VERSION_KEY, v))
+        .catch(() => {});
+    }
+    setUnread(false);
+  }
+
+  return { unread, releases, markSeen };
+}
 
 // Umbenannte Kategorien: alter Name → neuer Name
 const CATEGORY_MIGRATIONS: Record<string, string> = {
@@ -73,9 +130,12 @@ export default function App() {
     return migrated;
   });
 
+  const { budget, setBudget } = useBudget();
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [activeTab, setActiveTab] = useState('eingabe');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
+  const { unread, releases, markSeen } = useChangelog();
 
   useEffect(() => {
     localStorage.setItem('expenses', JSON.stringify(expenses));
@@ -137,9 +197,12 @@ export default function App() {
 
             <button
               onClick={() => setSettingsOpen(true)}
-              className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center shadow-sm hover:bg-zinc-800 transition-colors"
+              className="relative w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center shadow-sm hover:bg-zinc-800 transition-colors"
             >
-              <HugeiconsIcon icon={Settings02Icon} className="w-5 h-5 text-white" />
+              <HugeiconsIcon icon={User02Icon} className="w-5 h-5 text-white" />
+              {unread && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#FEFEFE]" />
+              )}
             </button>
           </div>
         </header>
@@ -157,6 +220,7 @@ export default function App() {
             <ExpenseOverviewTab
               expenses={expenses}
               onEditExpense={setEditingExpense}
+              budget={budget}
             />
           </TabsContent>
         </main>
@@ -167,6 +231,16 @@ export default function App() {
         onClose={() => setSettingsOpen(false)}
         expenses={expenses}
         onImport={handleImport}
+        budget={budget}
+        setBudget={setBudget}
+        changelogUnread={unread}
+        onOpenChangelog={() => { setSettingsOpen(false); setChangelogOpen(true); markSeen(); }}
+      />
+
+      <ChangelogSheet
+        isOpen={changelogOpen}
+        onClose={() => setChangelogOpen(false)}
+        releases={releases}
       />
 
       <EditExpenseModal
@@ -177,7 +251,7 @@ export default function App() {
         onClose={() => setEditingExpense(null)}
       />
 
-      <Toaster richColors position="bottom-center" />
+      <Toaster richColors position="top-center" />
     </div>
     </ErrorBoundary>
   );

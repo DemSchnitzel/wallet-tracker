@@ -1,0 +1,14 @@
+[
+  {
+    "version": "2026-04-18",
+    "date": "2026-04-18",
+    "entries": [
+      { "type": "new", "text": "Budget: Monatsbudget festlegen mit Fortschrittsbalken und Restbetrag pro Tag" },
+      { "type": "new", "text": "Detail-Ansichten für Budget, Kategorien und Trends" },
+      { "type": "new", "text": "\"Was ist neu\" – nach jedem Update siehst du direkt was sich geändert hat" },
+      { "type": "improved", "text": "Einstellungen übersichtlicher gegliedert in Finanzen & Daten" },
+      { "type": "improved", "text": "Hinweise und Bestätigungen erscheinen jetzt oben – nie mehr vom Keyboard verdeckt" },
+      { "type": "improved", "text": "Profil-Icon statt Zahnrad – zugänglicher und weniger technisch" }
+    ]
+  }
+]

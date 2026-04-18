@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format, parseISO, addDays, startOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ChartUpIcon } from '@hugeicons/core-free-icons';
+import { ChartUpIcon, ArrowExpand01Icon } from '@hugeicons/core-free-icons';
 import { formatCurrency } from '@/lib/constants';
 import { Expense } from '@/types';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface DayData {
+export interface DayData {
   date: string;
   total: number;
   transactions: Expense[];
@@ -19,9 +19,10 @@ export interface ExpenseTrendCardProps {
   expenses: Expense[];
   currentDate: Date;
   viewMode: 'month' | 'week' | 'day';
+  onExpand?: () => void;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers (exported for use in TrendDetailSheet) ──────────────────────────
 
 function triggerHaptic() {
   try {
@@ -29,21 +30,21 @@ function triggerHaptic() {
   } catch {}
 }
 
-function getWeekDays(date: Date): string[] {
+export function getWeekDays(date: Date): string[] {
   const start = startOfWeek(date, { weekStartsOn: 1 });
   return Array.from({ length: 7 }, (_, i) =>
     format(addDays(start, i), 'yyyy-MM-dd')
   );
 }
 
-function getMonthDays(date: Date): string[] {
+export function getMonthDays(date: Date): string[] {
   return eachDayOfInterval({
     start: startOfMonth(date),
     end: endOfMonth(date),
   }).map(d => format(d, 'yyyy-MM-dd'));
 }
 
-function computeDayData(expenses: Expense[], dates: string[]): DayData[] {
+export function computeDayData(expenses: Expense[], dates: string[]): DayData[] {
   const map: Record<string, DayData> = {};
   dates.forEach(d => { map[d] = { date: d, total: 0, transactions: [] }; });
   expenses.forEach(e => {
@@ -265,7 +266,7 @@ const getIndexFromX = useCallback(
 
 // ─── ExpenseTrendCard (Main) ──────────────────────────────────────────────────
 
-export function ExpenseTrendCard({ expenses, currentDate, viewMode }: ExpenseTrendCardProps) {
+export function ExpenseTrendCard({ expenses, currentDate, viewMode, onExpand }: ExpenseTrendCardProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [cursorDate, setCursorDate] = useState<string | null>(null);
   const cursorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -312,21 +313,31 @@ export function ExpenseTrendCard({ expenses, currentDate, viewMode }: ExpenseTre
     ? format(parseISO(selectedDayData.date), 'EEEE, d. MMM', { locale: de })
     : null;
 
-  const headerAmount = selectedDayData?.total ?? totalInView;
+  const avgPerDay = dates.length > 0 ? totalInView / dates.length : 0;
+  const headerAmount = selectedDayData?.total ?? avgPerDay;
+  const headerLabel = selectedDayLabel ?? (totalInView > 0 ? 'Ø pro Tag' : null);
 
 
   return (
-    <div className="flex-[0_0_80%] bg-white rounded-[2rem] p-5 shadow-sm border border-zinc-100 flex flex-col gap-3 min-h-[220px]">
+    <div
+      className="flex-[0_0_80%] bg-white rounded-[2rem] p-5 shadow-sm border border-zinc-100 flex flex-col gap-3 min-h-[220px] cursor-pointer active:scale-[0.98] transition-transform duration-150 select-none"
+      onClick={onExpand}
+    >
       {/* Label */}
-      <div className="text-zinc-500 text-sm font-medium flex items-center gap-2">
-        <HugeiconsIcon icon={ChartUpIcon} className="w-4 h-4 text-zinc-400" />
-        Ausgaben-Trend
+      <div className="flex items-center justify-between">
+        <div className="text-zinc-500 text-sm font-medium flex items-center gap-2">
+          <HugeiconsIcon icon={ChartUpIcon} className="w-4 h-4 text-zinc-400" />
+          Ausgaben-Trend
+        </div>
+        {onExpand && (
+          <HugeiconsIcon icon={ArrowExpand01Icon} className="w-4 h-4 text-zinc-300" />
+        )}
       </div>
 
       {/* Amount + date above chart */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={selectedDate ?? 'total'}
+          key={selectedDate ?? 'avg'}
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -4 }}
@@ -336,14 +347,14 @@ export function ExpenseTrendCard({ expenses, currentDate, viewMode }: ExpenseTre
             <p className="text-2xl font-semibold text-zinc-900 tabular-nums leading-tight">
               {formatCurrency(headerAmount)}
             </p>
-            {selectedDayLabel && (
-              <p className="text-xs text-zinc-400 font-medium">{selectedDayLabel}</p>
+            {headerLabel && (
+              <p className="text-xs text-zinc-400 font-medium">{headerLabel}</p>
             )}
           </div>
         </motion.div>
       </AnimatePresence>
 
-      {/* Chart */}
+      {/* Chart — stopPropagation verhindert versehentliches Expand beim Scrubbing */}
       <AnimatePresence mode="wait">
         <motion.div
           key={segment}
@@ -351,6 +362,7 @@ export function ExpenseTrendCard({ expenses, currentDate, viewMode }: ExpenseTre
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.97 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
+          onClick={(e) => e.stopPropagation()}
         >
           {segment === 'week' ? (
             <WeekChart

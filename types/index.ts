@@ -22,3 +22,7 @@ export interface Expense {
   category: Category;
   description: string;
 }
+
+export interface Budget {
+  monthlyAmount: number | null;
+}

@@ -6,10 +6,15 @@ import {defineConfig} from 'vite';
 const versionJsonPlugin = {
   name: 'version-json',
   generateBundle() {
+    const buildTime = Date.now();
+    const d = new Date(buildTime);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const defaultVersion = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const version = process.env.APP_VERSION ?? defaultVersion;
     (this as any).emitFile({
       type: 'asset',
       fileName: 'version.json',
-      source: JSON.stringify({ buildTime: Date.now() }),
+      source: JSON.stringify({ buildTime, version }),
     });
   },
 };
