@@ -9,7 +9,7 @@ interface ExpenseCardProps {
   onEdit?: () => void;
 }
 
-export const ExpenseCard = ({ expense, onEdit }: ExpenseCardProps) => {
+export const ExpenseCard = React.memo(({ expense, onEdit }: ExpenseCardProps) => {
   const Icon = CATEGORY_META[expense.category]?.icon || Package01Icon;
 
   return (
@@ -45,4 +45,4 @@ export const ExpenseCard = ({ expense, onEdit }: ExpenseCardProps) => {
       </div>
     </button>
   );
-};
+});

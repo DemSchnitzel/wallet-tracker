@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026-04-19",
+    "date": "2026-04-19",
+    "entries": [
+      { "type": "improved", "text": "App startet ab sofort auch ohne Internetverbindung – alle Daten bleiben verfügbar" },
+      { "type": "improved", "text": "Ladezeiten deutlich schneller durch optimiertes Caching und kleinere Dateipakete" }
+    ]
+  },
+  {
     "version": "2026-04-18",
     "date": "2026-04-18",
     "entries": [

@@ -169,6 +169,19 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
       }));
   }, [expensesInView]);
 
+  const today = new Date();
+  const isCurrentPeriod =
+    viewMode === 'month' ? format(currentDate, 'yyyy-MM') === format(today, 'yyyy-MM') :
+    viewMode === 'week'  ? isSameWeek(currentDate, today, { weekStartsOn: 1 }) :
+                           isToday(currentDate);
+
+  const formatDateHeading = (dateStr: string): string => {
+    const d = parseISO(dateStr);
+    if (isToday(d)) return 'Heute';
+    if (isYesterday(d)) return 'Gestern';
+    return format(d, 'dd. MMMM', { locale: de });
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in-50 duration-500 slide-in-from-bottom-4">
       {/* View Mode & Date Navigation */}
@@ -212,22 +225,14 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
           }} className="h-9 w-9 shrink-0 rounded-xl hover:bg-zinc-100 text-zinc-500">
             <HugeiconsIcon icon={ArrowRight01Icon} className="w-6 h-6" />
           </Button>
-          {(() => {
-            const today = new Date();
-            const isCurrentPeriod =
-              viewMode === 'month' ? format(currentDate, 'yyyy-MM') === format(today, 'yyyy-MM') :
-              viewMode === 'week'  ? isSameWeek(currentDate, today, { weekStartsOn: 1 }) :
-                                     isToday(currentDate);
-            if (isCurrentPeriod) return null;
-            return (
-              <button
-                onClick={() => setCurrentDate(new Date())}
-                className="absolute right-0 text-xs font-medium text-zinc-500 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-3 py-1.5 rounded-xl transition-colors"
-              >
-                Heute
-              </button>
-            );
-          })()}
+          {!isCurrentPeriod && (
+            <button
+              onClick={() => setCurrentDate(new Date())}
+              className="absolute right-0 text-xs font-medium text-zinc-500 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-3 py-1.5 rounded-xl transition-colors"
+            >
+              Heute
+            </button>
+          )}
         </div>
       </div>
 
@@ -481,12 +486,7 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
           groupedFilteredExpenses.map(([dateStr, dayExpenses]) => (
             <div key={dateStr} className="space-y-3">
               <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-2">
-                {(() => {
-                  const d = parseISO(dateStr);
-                  if (isToday(d)) return 'Heute';
-                  if (isYesterday(d)) return 'Gestern';
-                  return format(d, 'dd. MMMM', { locale: de });
-                })()}
+                {formatDateHeading(dateStr)}
               </h3>
               <div className="space-y-3">
                 {dayExpenses.map((expense) => (

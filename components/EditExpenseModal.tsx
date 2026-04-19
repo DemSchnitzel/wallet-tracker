@@ -30,9 +30,12 @@ export const EditExpenseModal = ({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Reset when a different expense is opened
+  // Reset confirm-state when a different expense is opened, and clear any pending timer
   useEffect(() => {
     setConfirmDelete(false);
+    return () => {
+      if (resetTimer.current) clearTimeout(resetTimer.current);
+    };
   }, [expense?.id]);
 
   if (!expense) return null;

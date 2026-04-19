@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { User02Icon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
@@ -6,14 +6,15 @@ import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Toaster } from '@/components/ui/sonner';
 import { Expense } from '@/types';
-import { CATEGORY_META } from '@/lib/constants';
 import { ExpenseInputTab } from '@/components/ExpenseInputTab';
 import { ExpenseOverviewTab } from '@/components/ExpenseOverviewTab';
-import { EditExpenseModal } from '@/components/EditExpenseModal';
-import { SettingsModal } from '@/components/SettingsModal';
-import { ChangelogSheet } from '@/components/ChangelogSheet';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useBudget } from '@/lib/useBudget';
+
+// Lazy-loaded: werden erst beim ersten Oeffnen geladen
+const EditExpenseModal = lazy(() => import('@/components/EditExpenseModal').then(m => ({ default: m.EditExpenseModal })));
+const SettingsModal = lazy(() => import('@/components/SettingsModal').then(m => ({ default: m.SettingsModal })));
+const ChangelogSheet = lazy(() => import('@/components/ChangelogSheet').then(m => ({ default: m.ChangelogSheet })));
 
 const SEEN_VERSION_KEY = 'wallet_seen_version';
 
@@ -86,8 +87,11 @@ function useUpdateCheck() {
   useEffect(() => {
     let knownBuildTime: number | null = null;
     let toastShown = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
     async function check() {
+      // Nicht pollen wenn Tab versteckt ist
+      if (document.visibilityState === 'hidden') return;
       try {
         const res = await fetch('/version.json', { cache: 'no-store' });
         if (!res.ok) return;
@@ -109,9 +113,34 @@ function useUpdateCheck() {
       }
     }
 
+    function startPolling() {
+      if (intervalId) return;
+      intervalId = setInterval(check, 2 * 60 * 1000);
+    }
+
+    function stopPolling() {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        check(); // sofort pruefen wenn Tab wieder aktiv wird
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    }
+
     check();
-    const interval = setInterval(check, 2 * 60 * 1000);
-    return () => clearInterval(interval);
+    startPolling();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 }
 
@@ -137,29 +166,37 @@ export default function App() {
   const [changelogOpen, setChangelogOpen] = useState(false);
   const { unread, releases, markSeen } = useChangelog();
 
+  // Debounced localStorage-Schreibvorgang: schreibt nur einmal nach 400ms Ruhe
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    localStorage.setItem('expenses', JSON.stringify(expenses));
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      localStorage.setItem('expenses', JSON.stringify(expenses));
+    }, 400);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
   }, [expenses]);
 
-  const handleAddExpense = (newExpense: Omit<Expense, 'id'>) => {
+  const handleAddExpense = useCallback((newExpense: Omit<Expense, 'id'>) => {
     setExpenses(prev => [...prev, { ...newExpense, id: crypto.randomUUID() }]);
     navigator.vibrate?.(10);
     toast.success('Ausgabe hinzugefügt');
-  };
+  }, []);
 
-  const handleEditExpense = (updated: Expense) => {
+  const handleEditExpense = useCallback((updated: Expense) => {
     setExpenses(prev => prev.map(e => e.id === updated.id ? updated : e));
     setEditingExpense(null);
     toast.success('Ausgabe gespeichert');
-  };
+  }, []);
 
-  const handleDeleteExpense = (id: string) => {
+  const handleDeleteExpense = useCallback((id: string) => {
     setExpenses(prev => prev.filter(e => e.id !== id));
     setEditingExpense(null);
     toast.error('Ausgabe gelöscht', { duration: 3000 });
-  };
+  }, []);
 
-  const handleImport = (imported: Expense[], mode: 'merge' | 'replace') => {
+  const handleImport = useCallback((imported: Expense[], mode: 'merge' | 'replace') => {
     const migrated = migrateExpenses(imported);
     if (mode === 'replace') {
       setExpenses(migrated);
@@ -172,7 +209,7 @@ export default function App() {
         return [...prev, ...newOnes];
       });
     }
-  };
+  }, []);
 
   return (
     <ErrorBoundary>
@@ -226,30 +263,32 @@ export default function App() {
         </main>
       </Tabs>
 
-      <SettingsModal
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        expenses={expenses}
-        onImport={handleImport}
-        budget={budget}
-        setBudget={setBudget}
-        changelogUnread={unread}
-        onOpenChangelog={() => { setSettingsOpen(false); setChangelogOpen(true); markSeen(); }}
-      />
+      <Suspense fallback={null}>
+        <SettingsModal
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          expenses={expenses}
+          onImport={handleImport}
+          budget={budget}
+          setBudget={setBudget}
+          changelogUnread={unread}
+          onOpenChangelog={() => { setSettingsOpen(false); setChangelogOpen(true); markSeen(); }}
+        />
 
-      <ChangelogSheet
-        isOpen={changelogOpen}
-        onClose={() => setChangelogOpen(false)}
-        releases={releases}
-      />
+        <ChangelogSheet
+          isOpen={changelogOpen}
+          onClose={() => setChangelogOpen(false)}
+          releases={releases}
+        />
 
-      <EditExpenseModal
-        expense={editingExpense}
-        expenses={expenses}
-        onSave={handleEditExpense}
-        onDelete={handleDeleteExpense}
-        onClose={() => setEditingExpense(null)}
-      />
+        <EditExpenseModal
+          expense={editingExpense}
+          expenses={expenses}
+          onSave={handleEditExpense}
+          onDelete={handleDeleteExpense}
+          onClose={() => setEditingExpense(null)}
+        />
+      </Suspense>
 
       <Toaster richColors position="top-center" />
     </div>

@@ -19,15 +19,15 @@ export function useDescriptionSuggestions(
     if (!query.trim()) return { descriptions: [], tags: [], categories: [] };
     const q = query.toLowerCase();
 
-    const descriptions = expenses
-      .filter(e => e.description.toLowerCase().includes(q) && isValidCategory(e.category))
-      .reduce((acc, curr) => {
-        if (!acc.find(item => item.description === curr.description)) {
-          acc.push({ description: curr.description, category: curr.category });
-        }
-        return acc;
-      }, [] as { description: string; category: Category }[])
-      .slice(0, 4);
+    const seen = new Set<string>();
+    const descriptions: { description: string; category: Category }[] = [];
+    for (const e of expenses) {
+      if (descriptions.length === 4) break;
+      if (!seen.has(e.description) && e.description.toLowerCase().includes(q) && isValidCategory(e.category)) {
+        seen.add(e.description);
+        descriptions.push({ description: e.description, category: e.category });
+      }
+    }
 
     const tags: { tag: string; category: Category }[] = [];
     CATEGORIES.forEach(c => {
