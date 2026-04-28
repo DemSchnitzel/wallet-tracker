@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell } from 'recharts';
-import { format, parseISO, subMonths, addMonths, subWeeks, addWeeks, subDays, addDays, isSameWeek, getWeek, isToday, isYesterday, getDaysInMonth } from 'date-fns';
+import { format, parseISO, subMonths, addMonths, subWeeks, addWeeks, subDays, addDays, isSameWeek, getWeek, isToday, isYesterday, getDaysInMonth, differenceInCalendarDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import useEmblaCarousel from 'embla-carousel-react';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -18,6 +18,7 @@ import { TrendDetailSheet } from '@/components/TrendDetailSheet';
 import { Expense, Category, CATEGORIES, Budget } from '@/types';
 import { CATEGORY_META, formatCurrency } from '@/lib/constants';
 import { useDescriptionSuggestions } from '@/lib/useDescriptionSuggestions';
+import { getPayCycle, formatCycleLabel, getAvailableBudget } from '@/lib/payCycle';
 
 interface ExpenseOverviewTabProps {
   expenses: Expense[];
@@ -80,40 +81,62 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
     };
   }, [selectedFilters, categoryEmblaApi]);
 
+  // Aktueller Zyklus (nur relevant wenn payDay gesetzt und viewMode === 'month')
+  const currentCycle = useMemo(() => {
+    if (viewMode !== 'month' || !budget.payDay) return null;
+    return getPayCycle(currentDate, budget.payDay);
+  }, [currentDate, viewMode, budget.payDay]);
+
   // Current period expenses
   const expensesInView = useMemo(() => {
     return expenses.filter(e => {
       const d = parseISO(e.date);
-      if (viewMode === 'month') return format(d, 'yyyy-MM') === format(currentDate, 'yyyy-MM');
+      if (viewMode === 'month') {
+        if (currentCycle) {
+          return d >= currentCycle.start && d <= currentCycle.end;
+        }
+        return format(d, 'yyyy-MM') === format(currentDate, 'yyyy-MM');
+      }
       if (viewMode === 'week') return isSameWeek(d, currentDate, { weekStartsOn: 1 });
       return e.date === format(currentDate, 'yyyy-MM-dd');
     });
-  }, [expenses, currentDate, viewMode]);
+  }, [expenses, currentDate, viewMode, currentCycle]);
 
   // Previous period expenses
   const previousPeriodData = useMemo(() => {
-    const prevDate =
-      viewMode === 'month' ? subMonths(currentDate, 1) :
-      viewMode === 'week'  ? subWeeks(currentDate, 1) :
-                             subDays(currentDate, 1);
+    let prevExpenses: typeof expenses;
+    let label: string;
 
-    const prevExpenses = expenses.filter(e => {
-      const d = parseISO(e.date);
-      if (viewMode === 'month') return format(d, 'yyyy-MM') === format(prevDate, 'yyyy-MM');
-      if (viewMode === 'week') return isSameWeek(d, prevDate, { weekStartsOn: 1 });
-      return e.date === format(prevDate, 'yyyy-MM-dd');
-    });
+    if (viewMode === 'month' && currentCycle) {
+      const prevCycleEnd = new Date(currentCycle.start);
+      prevCycleEnd.setDate(prevCycleEnd.getDate() - 1);
+      const prevCycle = getPayCycle(prevCycleEnd, budget.payDay!);
+      prevExpenses = expenses.filter(e => {
+        const d = parseISO(e.date);
+        return d >= prevCycle.start && d <= prevCycle.end;
+      });
+      label = `als im Vormonat`;
+    } else {
+      const prevDate =
+        viewMode === 'month' ? subMonths(currentDate, 1) :
+        viewMode === 'week'  ? subWeeks(currentDate, 1) :
+                               subDays(currentDate, 1);
+      prevExpenses = expenses.filter(e => {
+        const d = parseISO(e.date);
+        if (viewMode === 'month') return format(d, 'yyyy-MM') === format(prevDate, 'yyyy-MM');
+        if (viewMode === 'week') return isSameWeek(d, prevDate, { weekStartsOn: 1 });
+        return e.date === format(prevDate, 'yyyy-MM-dd');
+      });
+      label =
+        viewMode === 'month' ? `als im ${format(prevDate, 'MMMM', { locale: de })}` :
+        viewMode === 'week'  ? 'als letzte Woche' :
+                               'als gestern';
+    }
 
     if (prevExpenses.length === 0) return null;
-
     const prevTotal = prevExpenses.reduce((sum, e) => sum + e.amount, 0);
-    const label =
-      viewMode === 'month' ? `als im ${format(prevDate, 'MMMM', { locale: de })}` :
-      viewMode === 'week'  ? 'als letzte Woche' :
-                             'als gestern';
-
     return { total: prevTotal, label, expenses: prevExpenses };
-  }, [expenses, currentDate, viewMode]);
+  }, [expenses, currentDate, viewMode, currentCycle, budget.payDay]);
 
   const searchSuggestions = useDescriptionSuggestions(expenses, searchQuery);
 
@@ -150,12 +173,19 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
     if (viewMode === 'week') return totalInView > 0 ? totalInView / 7 : null;
     if (viewMode === 'month') {
       const today = new Date();
+      if (currentCycle) {
+        const isCurrentCycleView = today >= currentCycle.start && today <= currentCycle.end;
+        const daysPassed = isCurrentCycleView
+          ? differenceInCalendarDays(today, currentCycle.start) + 1
+          : differenceInCalendarDays(currentCycle.end, currentCycle.start) + 1;
+        return totalInView > 0 ? totalInView / daysPassed : null;
+      }
       const isCurrentMonthView = format(currentDate, 'yyyy-MM') === format(today, 'yyyy-MM');
       const days = isCurrentMonthView ? today.getDate() : getDaysInMonth(currentDate);
       return totalInView > 0 ? totalInView / days : null;
     }
     return null;
-  }, [totalInView, currentDate, viewMode]);
+  }, [totalInView, currentDate, viewMode, currentCycle]);
 
   const categoryData = useMemo(() => {
     const totals: Record<string, number> = {};
@@ -171,6 +201,8 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
 
   const today = new Date();
   const isCurrentPeriod =
+    viewMode === 'month' && currentCycle
+      ? today >= currentCycle.start && today <= currentCycle.end :
     viewMode === 'month' ? format(currentDate, 'yyyy-MM') === format(today, 'yyyy-MM') :
     viewMode === 'week'  ? isSameWeek(currentDate, today, { weekStartsOn: 1 }) :
                            isToday(currentDate);
@@ -213,8 +245,12 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
           }} className="h-9 w-9 shrink-0 rounded-xl hover:bg-zinc-100 text-zinc-500">
             <HugeiconsIcon icon={ArrowLeft01Icon} className="w-6 h-6" />
           </Button>
-          <div className="text-center font-medium text-zinc-900 text-sm w-[110px]">
-            {viewMode === 'month' && format(currentDate, 'MMMM yyyy', { locale: de })}
+          <div className="text-center font-medium text-zinc-900 text-sm w-[140px]">
+            {viewMode === 'month' && currentCycle
+              ? formatCycleLabel(currentCycle.start, currentCycle.end)
+              : viewMode === 'month'
+              ? format(currentDate, 'MMMM yyyy', { locale: de })
+              : null}
             {viewMode === 'week' && `KW ${getWeek(currentDate, { weekStartsOn: 1 })} ${format(currentDate, 'yyyy')}`}
             {viewMode === 'day' && format(currentDate, 'dd. MMM yyyy', { locale: de })}
           </div>
@@ -247,6 +283,7 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
               budget={budget}
               currentDate={currentDate}
               viewMode={viewMode}
+              currentCycle={currentCycle}
               onExpand={() => setIsTotalSheetOpen(true)}
             />
 
@@ -473,6 +510,7 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
         budget={budget}
         expenses={expensesInView}
         currentDate={currentDate}
+        currentCycle={currentCycle}
       />
 
       {/* Expenses List */}

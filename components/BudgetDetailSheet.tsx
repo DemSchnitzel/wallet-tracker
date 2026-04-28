@@ -10,6 +10,7 @@ import {
 import { BottomSheet } from '@/components/BottomSheet';
 import { Budget, Expense } from '@/types';
 import { formatCurrency } from '@/lib/constants';
+import { getAvailableBudget, getSavingsGoalAmount, PayCycle } from '@/lib/payCycle';
 
 interface TotalDetailSheetProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ interface TotalDetailSheetProps {
   budget: Budget;
   expenses: Expense[];
   currentDate: Date;
+  currentCycle: PayCycle | null;
 }
 
 export function TotalDetailSheet({
@@ -33,43 +35,53 @@ export function TotalDetailSheet({
   budget,
   expenses,
   currentDate,
+  currentCycle,
 }: TotalDetailSheetProps) {
-  const inCurrentMonth = format(currentDate, 'yyyy-MM') === format(new Date(), 'yyyy-MM');
-  const hasBudget = budget.monthlyAmount !== null && inCurrentMonth;
-  const monthlyAmount = budget.monthlyAmount ?? 0;
-
   const today = new Date();
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const daysInMonth = getDaysInMonth(currentDate);
-  const daysPassed = Math.max(1, differenceInDays(today, monthStart) + 1);
-  const daysLeft = Math.max(0, differenceInCalendarDays(monthEnd, today));
+  const availableBudget = getAvailableBudget(budget);
+  const hasIncomePlan = budget.monthlyIncome !== null;
+  const savingsGoalAmount = getSavingsGoalAmount(budget);
 
-  // Anteiliges Allowance je View-Modus
+  // Perioden-Grenzen: Zyklus bevorzugt, sonst Kalendermonat
+  const periodStart = currentCycle ? currentCycle.start : startOfMonth(currentDate);
+  const periodEnd   = currentCycle ? currentCycle.end   : endOfMonth(currentDate);
+
+  const inCurrentPeriod = currentCycle
+    ? today >= currentCycle.start && today <= currentCycle.end
+    : format(currentDate, 'yyyy-MM') === format(today, 'yyyy-MM');
+
+  const hasBudget = availableBudget !== null && inCurrentPeriod;
+  const amount = availableBudget ?? 0;
+
+  const daysInMonth = getDaysInMonth(currentDate);
   const allowance =
-    viewMode === 'day'  ? monthlyAmount / daysInMonth :
-    viewMode === 'week' ? (monthlyAmount / daysInMonth) * 7 :
-    monthlyAmount;
+    viewMode === 'day'  ? amount / daysInMonth :
+    viewMode === 'week' ? (amount / daysInMonth) * 7 :
+    amount;
   const remaining = allowance - totalInView;
 
-  // Burn-Rate und Prognose nur für Monatsansicht relevant
+  const daysPassed = Math.max(1, differenceInDays(today, periodStart) + 1);
+  const daysLeft   = Math.max(0, differenceInCalendarDays(periodEnd, today));
+  const totalDaysInPeriod = differenceInCalendarDays(periodEnd, periodStart) + 1;
+
   const dailyRate = totalInView / daysPassed;
-  const forecast = dailyRate * daysInMonth;
+  const forecast  = dailyRate * totalDaysInPeriod;
   const showForecast = hasBudget && viewMode === 'month' && daysPassed > 1 && daysLeft > 0;
 
   const delta = previousPeriodData ? totalInView - previousPeriodData.total : null;
-
   const showComparisonSection = previousPeriodData !== null || (!hasBudget && avgPerDay !== null);
+
+  const periodLabel = currentCycle ? 'Zyklus' : 'Monats';
 
   return (
     <BottomSheet
       isOpen={isOpen}
       onClose={onClose}
-      title={hasBudget ? 'Budget-Details' : 'Ausgaben-Details'}
+      title={hasBudget ? (hasIncomePlan ? 'Sparplan-Details' : 'Budget-Details') : 'Ausgaben-Details'}
     >
       <div className="space-y-6 pb-2">
 
-        {/* ── Budget Status ── */}
+        {/* ── Budget / Sparplan Status ── */}
         {hasBudget && (
           <>
             {/* Hero: Noch verfügbar / über Budget */}
@@ -86,7 +98,7 @@ export function TotalDetailSheet({
               </div>
             </div>
 
-            {/* Burn-Rate-Kacheln nur in Monatsansicht */}
+            {/* Burn-Rate-Kacheln (Monatsansicht) */}
             {viewMode === 'month' && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-zinc-50 rounded-2xl p-4">
@@ -110,19 +122,44 @@ export function TotalDetailSheet({
               </div>
             )}
 
-            {showForecast && (
-              <div className={`rounded-2xl px-4 py-3.5 flex items-center justify-between ${forecast > monthlyAmount ? 'bg-red-50' : 'bg-emerald-50'}`}>
-                <div>
-                  <div className={`text-xs font-medium ${forecast > monthlyAmount ? 'text-red-600' : 'text-emerald-700'}`}>
-                    Prognose bis Monatsende
+            {/* Sparziel-Kachel (nur wenn Sparplan aktiv) */}
+            {hasIncomePlan && savingsGoalAmount !== null && savingsGoalAmount > 0 && viewMode === 'month' && (
+              <div>
+                <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Sparziel</h3>
+                <div className="bg-zinc-50 rounded-2xl px-4 py-3.5 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-medium text-zinc-500">Sparziel diesen Zyklus</div>
+                    {remaining >= 0 ? (
+                      <div className="text-xs text-emerald-600 mt-0.5">
+                        ✓ On track – bei aktueller Rate erreichbar
+                      </div>
+                    ) : (
+                      <div className="text-xs text-red-500 mt-0.5">
+                        Budget überzogen – Sparziel gefährdet
+                      </div>
+                    )}
                   </div>
-                  <div className={`text-sm mt-0.5 ${forecast > monthlyAmount ? 'text-red-500' : 'text-emerald-600'}`}>
-                    {forecast > monthlyAmount
-                      ? `~${formatCurrency(forecast - monthlyAmount)} über Budget`
-                      : `~${formatCurrency(monthlyAmount - forecast)} unter Budget`}
+                  <div className="text-xl font-semibold text-zinc-700 tabular-nums">
+                    {formatCurrency(savingsGoalAmount)}
                   </div>
                 </div>
-                <div className={`text-xl font-semibold tabular-nums ${forecast > monthlyAmount ? 'text-red-500' : 'text-emerald-600'}`}>
+              </div>
+            )}
+
+            {/* Prognose */}
+            {showForecast && (
+              <div className={`rounded-2xl px-4 py-3.5 flex items-center justify-between ${forecast > amount ? 'bg-red-50' : 'bg-emerald-50'}`}>
+                <div>
+                  <div className={`text-xs font-medium ${forecast > amount ? 'text-red-600' : 'text-emerald-700'}`}>
+                    Prognose bis {periodLabel}sende
+                  </div>
+                  <div className={`text-sm mt-0.5 ${forecast > amount ? 'text-red-500' : 'text-emerald-600'}`}>
+                    {forecast > amount
+                      ? `~${formatCurrency(forecast - amount)} über Budget`
+                      : `~${formatCurrency(amount - forecast)} unter Budget`}
+                  </div>
+                </div>
+                <div className={`text-xl font-semibold tabular-nums ${forecast > amount ? 'text-red-500' : 'text-emerald-600'}`}>
                   ~{formatCurrency(forecast)}
                 </div>
               </div>

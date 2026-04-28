@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026-04-28",
+    "date": "2026-04-28",
+    "entries": [
+      { "type": "new", "text": "Sparplan: Lege dein Nettoeinkommen und ein Sparziel fest – das verfügbare Budget wird automatisch berechnet" },
+      { "type": "new", "text": "Gehaltstag: Bestimme, wann dein Gehalt kommt – die Übersicht folgt ab sofort deinem persönlichen Zyklus statt dem Kalendermonat" },
+      { "type": "new", "text": "Sparziel als Betrag oder Prozentsatz festlegen – einfach auf € oder % tippen zum Wechseln" },
+      { "type": "improved", "text": "Tagesrate, verbleibende Tage und Monatsend-Prognose rechnen jetzt mit dem echten Gehaltszyklus" },
+      { "type": "improved", "text": "Budget-Details zeigen Sparziel-Status und ob du auf Kurs bist" }
+    ]
+  },
+  {
     "version": "2026-04-19",
     "date": "2026-04-19",
     "entries": [

@@ -159,7 +159,7 @@ export default function App() {
     return migrated;
   });
 
-  const { budget, setBudget } = useBudget();
+  const { budget, setBudget, availableBudget, hasIncomePlan } = useBudget();
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [activeTab, setActiveTab] = useState('eingabe');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -271,6 +271,8 @@ export default function App() {
           onImport={handleImport}
           budget={budget}
           setBudget={setBudget}
+          availableBudget={availableBudget}
+          hasIncomePlan={hasIncomePlan}
           changelogUnread={unread}
           onOpenChangelog={() => { setSettingsOpen(false); setChangelogOpen(true); markSeen(); }}
         />

@@ -25,4 +25,8 @@ export interface Expense {
 
 export interface Budget {
   monthlyAmount: number | null;
+  payDay: number | null;
+  monthlyIncome: number | null;
+  savingsGoal: number | null;
+  savingsGoalMode: 'amount' | 'percent';
 }
