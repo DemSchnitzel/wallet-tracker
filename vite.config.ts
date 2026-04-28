@@ -27,7 +27,7 @@ export default defineConfig(() => {
       tailwindcss(),
       versionJsonPlugin,
       VitePWA({
-        registerType: 'prompt',
+        registerType: 'autoUpdate',
         // version.json + changelog.json werden vom SW ausgeschlossen,
         // damit das Update-Detection-System weiterhin funktioniert.
         workbox: {
