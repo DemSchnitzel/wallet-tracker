@@ -1,4 +1,4 @@
-import { addMonths, subMonths, format, setDate, getDaysInMonth } from 'date-fns';
+import { addMonths, subMonths, format, setDate, getDaysInMonth, startOfDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Budget } from '@/types';
 
@@ -36,7 +36,7 @@ export function getPayCycle(date: Date, payDay: number): PayCycle {
   const cycleEnd = new Date(nextPayDay);
   cycleEnd.setDate(cycleEnd.getDate() - 1);
 
-  return { start: cycleStart, end: cycleEnd };
+  return { start: startOfDay(cycleStart), end: startOfDay(cycleEnd) };
 }
 
 /** Gibt Zyklen-Navigation einen Zyklus zurück */

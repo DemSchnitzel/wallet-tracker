@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026-05-22",
+    "date": "2026-05-22",
+    "entries": [
+      { "type": "fixed", "text": "Ausgaben am Gehaltstag selbst wurden in der Monatsansicht nicht angezeigt" },
+      { "type": "fixed", "text": "Ausgaben-Trend startet jetzt korrekt am Gehaltstag – nicht mehr am 1. des Monats" }
+    ]
+  },
+  {
     "version": "2026-04-28",
     "date": "2026-04-28",
     "entries": [

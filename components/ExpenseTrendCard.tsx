@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, parseISO, addDays, startOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { getPayCycle } from '@/lib/payCycle';
 import { de } from 'date-fns/locale';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ChartUpIcon, ArrowExpand01Icon } from '@hugeicons/core-free-icons';
@@ -19,6 +20,7 @@ export interface ExpenseTrendCardProps {
   expenses: Expense[];
   currentDate: Date;
   viewMode: 'month' | 'week' | 'day';
+  payDay?: number | null;
   onExpand?: () => void;
 }
 
@@ -42,6 +44,11 @@ export function getMonthDays(date: Date): string[] {
     start: startOfMonth(date),
     end: endOfMonth(date),
   }).map(d => format(d, 'yyyy-MM-dd'));
+}
+
+export function getPayCycleDays(date: Date, payDay: number): string[] {
+  const { start, end } = getPayCycle(date, payDay);
+  return eachDayOfInterval({ start, end }).map(d => format(d, 'yyyy-MM-dd'));
 }
 
 export function computeDayData(expenses: Expense[], dates: string[]): DayData[] {
@@ -266,7 +273,7 @@ const getIndexFromX = useCallback(
 
 // ─── ExpenseTrendCard (Main) ──────────────────────────────────────────────────
 
-export function ExpenseTrendCard({ expenses, currentDate, viewMode, onExpand }: ExpenseTrendCardProps) {
+export function ExpenseTrendCard({ expenses, currentDate, viewMode, payDay, onExpand }: ExpenseTrendCardProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [cursorDate, setCursorDate] = useState<string | null>(null);
   const cursorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -284,10 +291,11 @@ export function ExpenseTrendCard({ expenses, currentDate, viewMode, onExpand }: 
 
   const segment = viewMode === 'week' ? 'week' : 'month';
 
-  const dates = useMemo(
-    () => (segment === 'week' ? getWeekDays(currentDate) : getMonthDays(currentDate)),
-    [segment, currentDate]
-  );
+  const dates = useMemo(() => {
+    if (segment === 'week') return getWeekDays(currentDate);
+    if (payDay) return getPayCycleDays(currentDate, payDay);
+    return getMonthDays(currentDate);
+  }, [segment, currentDate, payDay]);
 
   const dayDataList = useMemo(
     () => computeDayData(expenses, dates),

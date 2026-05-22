@@ -3,7 +3,7 @@ import { format, parseISO, getDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { BottomSheet } from '@/components/BottomSheet';
-import { computeDayData, getWeekDays, getMonthDays, DayData } from '@/components/ExpenseTrendCard';
+import { computeDayData, getWeekDays, getMonthDays, getPayCycleDays, DayData } from '@/components/ExpenseTrendCard';
 import { Expense } from '@/types';
 import { formatCurrency } from '@/lib/constants';
 
@@ -13,6 +13,7 @@ interface TrendDetailSheetProps {
   expenses: Expense[];
   currentDate: Date;
   viewMode: 'month' | 'week';
+  payDay?: number | null;
 }
 
 const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -182,11 +183,13 @@ export function TrendDetailSheet({
   expenses,
   currentDate,
   viewMode,
+  payDay,
 }: TrendDetailSheetProps) {
-  const dates = useMemo(
-    () => viewMode === 'week' ? getWeekDays(currentDate) : getMonthDays(currentDate),
-    [viewMode, currentDate]
-  );
+  const dates = useMemo(() => {
+    if (viewMode === 'week') return getWeekDays(currentDate);
+    if (payDay) return getPayCycleDays(currentDate, payDay);
+    return getMonthDays(currentDate);
+  }, [viewMode, currentDate, payDay]);
 
   const dayDataList = useMemo(
     () => computeDayData(expenses, dates),

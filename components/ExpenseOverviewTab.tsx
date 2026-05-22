@@ -360,6 +360,7 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
                 expenses={expenses}
                 currentDate={currentDate}
                 viewMode={viewMode}
+                payDay={budget.payDay}
                 onExpand={() => setIsTrendSheetOpen(true)}
               />
             )}
@@ -488,6 +489,7 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
           expenses={expensesInView}
           currentDate={currentDate}
           viewMode={viewMode}
+          payDay={budget.payDay}
         />
       )}
 
