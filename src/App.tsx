@@ -21,7 +21,7 @@ const SEEN_VERSION_KEY = 'wallet_seen_version';
 interface ChangelogEntry { type: 'new' | 'improved' | 'fixed'; text: string; }
 interface ChangelogRelease { version: string; date: string; entries: ChangelogEntry[]; }
 
-function useChangelog() {
+function useChangelog(onOpen: () => void) {
   const [unread, setUnread] = useState(false);
   const [releases, setReleases] = useState<ChangelogRelease[]>([]);
 
@@ -46,7 +46,7 @@ function useChangelog() {
           toast('App aktualisiert', {
             description: 'Schau was neu ist.',
             duration: 8000,
-            action: { label: 'Was ist neu?', onClick: () => setUnread(u => { markSeen(version); return false as unknown as typeof u; }) },
+            action: { label: 'Was ist neu?', onClick: () => { markSeen(version); setUnread(false); onOpen(); } },
           });
         }
       } catch {
@@ -164,7 +164,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('eingabe');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
-  const { unread, releases, markSeen } = useChangelog();
+  const { unread, releases, markSeen } = useChangelog(() => setChangelogOpen(true));
 
   // Debounced localStorage-Schreibvorgang: schreibt nur einmal nach 400ms Ruhe
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
