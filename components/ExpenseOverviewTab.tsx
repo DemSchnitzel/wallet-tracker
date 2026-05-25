@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell } from 'recharts';
-import { format, parseISO, subMonths, addMonths, subWeeks, addWeeks, subDays, addDays, isSameWeek, getWeek, isToday, isYesterday, getDaysInMonth, differenceInCalendarDays } from 'date-fns';
+import { format, parseISO, subMonths, addMonths, subWeeks, addWeeks, subDays, addDays, isSameWeek, startOfWeek, getWeek, isToday, isYesterday, getDaysInMonth, differenceInCalendarDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import useEmblaCarousel from 'embla-carousel-react';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -102,18 +102,26 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
     });
   }, [expenses, currentDate, viewMode, currentCycle]);
 
-  // Previous period expenses
+  // Previous period expenses — same-period comparison:
+  // only the same number of elapsed days as in the current period
   const previousPeriodData = useMemo(() => {
     let prevExpenses: typeof expenses;
     let label: string;
+    const today = new Date();
 
     if (viewMode === 'month' && currentCycle) {
       const prevCycleEnd = new Date(currentCycle.start);
       prevCycleEnd.setDate(prevCycleEnd.getDate() - 1);
       const prevCycle = getPayCycle(prevCycleEnd, budget.payDay!);
+
+      // Wie viele Tage sind im aktuellen Zyklus bereits vergangen?
+      const elapsedEnd = today <= currentCycle.end ? today : currentCycle.end;
+      const daysElapsed = differenceInCalendarDays(elapsedEnd, currentCycle.start) + 1;
+      const prevCutoff = addDays(prevCycle.start, daysElapsed - 1);
+
       prevExpenses = expenses.filter(e => {
         const d = parseISO(e.date);
-        return d >= prevCycle.start && d <= prevCycle.end;
+        return d >= prevCycle.start && d <= prevCutoff;
       });
       label = `als im Vormonat`;
     } else {
@@ -121,16 +129,43 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
         viewMode === 'month' ? subMonths(currentDate, 1) :
         viewMode === 'week'  ? subWeeks(currentDate, 1) :
                                subDays(currentDate, 1);
-      prevExpenses = expenses.filter(e => {
-        const d = parseISO(e.date);
-        if (viewMode === 'month') return format(d, 'yyyy-MM') === format(prevDate, 'yyyy-MM');
-        if (viewMode === 'week') return isSameWeek(d, prevDate, { weekStartsOn: 1 });
-        return e.date === format(prevDate, 'yyyy-MM-dd');
-      });
-      label =
-        viewMode === 'month' ? `als im ${format(prevDate, 'MMMM', { locale: de })}` :
-        viewMode === 'week'  ? 'als letzte Woche' :
-                               'als gestern';
+
+      if (viewMode === 'month') {
+        // Same-period: nur bis zum gleichen Tag des Vormonats
+        const isCurrentMonth = format(today, 'yyyy-MM') === format(currentDate, 'yyyy-MM');
+        const dayOfMonth = isCurrentMonth ? today.getDate() : getDaysInMonth(currentDate);
+        const cutoffDay = Math.min(dayOfMonth, getDaysInMonth(prevDate));
+        const prevCutoff = new Date(prevDate.getFullYear(), prevDate.getMonth(), cutoffDay);
+
+        prevExpenses = expenses.filter(e => {
+          const d = parseISO(e.date);
+          return format(d, 'yyyy-MM') === format(prevDate, 'yyyy-MM') && d <= prevCutoff;
+        });
+        label = `als im ${format(prevDate, 'MMMM', { locale: de })}`;
+      } else if (viewMode === 'week') {
+        // Same-period: nur bis zum gleichen Wochentag der Vorwoche
+        const startOfCurrentWeek = startOfWeek(currentDate, { weekStartsOn: 1 });
+        const startOfPrevWeek = startOfWeek(prevDate, { weekStartsOn: 1 });
+        const isCurrentWeek = isSameWeek(today, currentDate, { weekStartsOn: 1 });
+        const daysElapsed = isCurrentWeek
+          ? differenceInCalendarDays(today, startOfCurrentWeek) + 1
+          : 7;
+        const prevWeekCutoff = addDays(startOfPrevWeek, daysElapsed - 1);
+
+        prevExpenses = expenses.filter(e => {
+          const d = parseISO(e.date);
+          return d >= startOfPrevWeek && d <= prevWeekCutoff;
+        });
+        label = 'als letzte Woche';
+      } else {
+        prevExpenses = expenses.filter(e => {
+          return e.date === format(prevDate, 'yyyy-MM-dd');
+        });
+        label = 'als gestern';
+        // Tag-Modus: 0 € gestern ist relevante Info — kein null zurückgeben
+        const prevTotal = prevExpenses.reduce((sum, e) => sum + e.amount, 0);
+        return { total: prevTotal, label, expenses: prevExpenses };
+      }
     }
 
     if (prevExpenses.length === 0) return null;

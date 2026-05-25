@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026-05-25",
+    "date": "2026-05-25",
+    "entries": [
+      { "type": "improved", "text": "Zeitraum-Vergleich nutzt jetzt dieselbe Anzahl vergangener Tage – kein Vergleich mehr gegen einen vollständigen Vormonat" },
+      { "type": "improved", "text": "Wochenansicht vergleicht ebenfalls nur bis zum gleichen Wochentag der Vorwoche" },
+      { "type": "improved", "text": "Tagesansicht zeigt jetzt immer den Vergleich zu gestern – auch wenn gestern 0 € ausgegeben wurden" }
+    ]
+  },
+  {
     "version": "2026-05-22",
     "date": "2026-05-22",
     "entries": [
