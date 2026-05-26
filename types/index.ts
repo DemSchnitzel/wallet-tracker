@@ -21,6 +21,7 @@ export interface Expense {
   amount: number;
   category: Category;
   description: string;
+  avoidable?: boolean;
 }
 
 export interface Budget {

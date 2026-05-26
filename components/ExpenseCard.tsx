@@ -1,6 +1,6 @@
 import React from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Package01Icon, PencilEdit01Icon } from '@hugeicons/core-free-icons';
+import { Package01Icon, PencilEdit01Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
 import { Expense } from '@/types';
 import { CATEGORY_META, formatCurrency } from '@/lib/constants';
 
@@ -35,7 +35,12 @@ export const ExpenseCard = React.memo(({ expense, onEdit }: ExpenseCardProps) =>
         </div>
 
         <div className="min-w-0">
-          <p className="font-medium text-zinc-900 text-base truncate">{expense.description}</p>
+          <p className="font-medium text-zinc-900 text-base truncate flex items-center gap-1.5">
+            <span className="truncate">{expense.description}</span>
+            {expense.avoidable && (
+              <HugeiconsIcon icon={AlertCircleIcon} className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            )}
+          </p>
           <p className="text-sm text-zinc-500 truncate">{expense.category}</p>
         </div>
       </div>

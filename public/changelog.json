@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026-05-26",
+    "date": "2026-05-26",
+    "entries": [
+      { "type": "new", "text": "Ausgaben als „Hätte ich vermeiden können" markieren – direkt beim Bearbeiten eines Eintrags" },
+      { "type": "new", "text": "Vermeidbare Ausgaben als Summe und Prozentanteil in den Budget-Details sichtbar" },
+      { "type": "new", "text": "Suchvorschlag „Vermeidbar" filtert die Liste auf markierte Einträge" },
+      { "type": "new", "text": "Markierte Einträge zeigen ein Icon in der Ausgabenliste – sofort beim Scrollen erkennbar" }
+    ]
+  },
+  {
     "version": "2026-05-25",
     "date": "2026-05-25",
     "entries": [

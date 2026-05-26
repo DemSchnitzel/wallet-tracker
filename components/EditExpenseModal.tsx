@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { FloppyDiskIcon, Delete02Icon } from '@hugeicons/core-free-icons';
+import { FloppyDiskIcon, Delete02Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
 
 import {
   Dialog,
@@ -28,11 +28,13 @@ export const EditExpenseModal = ({
   onClose,
 }: EditExpenseModalProps) => {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [avoidable, setAvoidable] = useState(false);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Reset confirm-state when a different expense is opened, and clear any pending timer
+  // Reset states when a different expense is opened
   useEffect(() => {
     setConfirmDelete(false);
+    setAvoidable(expense?.avoidable ?? false);
     return () => {
       if (resetTimer.current) clearTimeout(resetTimer.current);
     };
@@ -41,7 +43,7 @@ export const EditExpenseModal = ({
   if (!expense) return null;
 
   const handleSave = (values: Omit<Expense, 'id'>) => {
-    onSave({ ...values, id: expense.id });
+    onSave({ ...values, id: expense.id, avoidable });
   };
 
   const handleDeleteClick = () => {
@@ -79,6 +81,29 @@ export const EditExpenseModal = ({
               </>
             }
           />
+        </div>
+
+        {/* Avoidable Toggle */}
+        <div className="px-6 pb-4">
+          <button
+            type="button"
+            onClick={() => setAvoidable(v => !v)}
+            className={`w-full h-12 rounded-2xl text-sm font-medium flex items-center justify-between px-4 transition-all ${
+              avoidable
+                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                : 'bg-zinc-50 text-zinc-400 border border-transparent hover:bg-zinc-100'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <HugeiconsIcon icon={AlertCircleIcon} className="w-4 h-4" />
+              Hätte ich vermeiden können
+            </div>
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+              avoidable ? 'bg-amber-500 border-amber-500' : 'border-zinc-300'
+            }`}>
+              {avoidable && <div className="w-2 h-2 rounded-full bg-white" />}
+            </div>
+          </button>
         </div>
 
         {/* Delete Section */}

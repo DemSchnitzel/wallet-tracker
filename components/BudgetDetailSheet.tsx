@@ -68,6 +68,9 @@ export function TotalDetailSheet({
   const forecast  = dailyRate * totalDaysInPeriod;
   const showForecast = hasBudget && viewMode === 'month' && daysPassed > 1 && daysLeft > 0;
 
+  const avoidableTotal = expenses.filter(e => e.avoidable).reduce((s, e) => s + e.amount, 0);
+  const avoidablePct = totalInView > 0 ? Math.round((avoidableTotal / totalInView) * 100) : 0;
+
   const delta = previousPeriodData ? totalInView - previousPeriodData.total : null;
   const showComparisonSection = previousPeriodData !== null || (!hasBudget && avgPerDay !== null);
 
@@ -165,6 +168,24 @@ export function TotalDetailSheet({
               </div>
             )}
           </>
+        )}
+
+        {/* ── Vermeidbare Ausgaben ── */}
+        {avoidableTotal > 0 && (
+          <div>
+            <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
+              Vermeidbare Ausgaben
+            </h3>
+            <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3.5 flex items-center justify-between">
+              <div>
+                <div className="text-xs font-medium text-amber-700">Hätte ich vermeiden können</div>
+                <div className="text-xs text-amber-500 mt-0.5">{avoidablePct} % der Gesamtausgaben</div>
+              </div>
+              <div className="text-xl font-semibold text-amber-700 tabular-nums">
+                {formatCurrency(avoidableTotal)}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── Zeitraum-Vergleich ── */}

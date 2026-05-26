@@ -175,15 +175,23 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
 
   const searchSuggestions = useDescriptionSuggestions(expenses, searchQuery);
 
+  const showAvoidableSuggestion = useMemo(() =>
+    !selectedFilters.includes('Vermeidbar') &&
+    expensesInView.some(e => e.avoidable) &&
+    'vermeidbar'.includes(searchQuery.toLowerCase().trim()),
+  [expensesInView, searchQuery, selectedFilters]);
+
   const filteredExpenses = useMemo(() => {
     const categoryFilters = selectedFilters.filter(f => CATEGORIES.includes(f as Category));
-    const termFilters = selectedFilters.filter(f => !CATEGORIES.includes(f as Category));
+    const avoidableFilter = selectedFilters.includes('Vermeidbar');
+    const termFilters = selectedFilters.filter(f => !CATEGORIES.includes(f as Category) && f !== 'Vermeidbar');
     return expensesInView
       .filter(e => {
         const matchesSearchText = e.description.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesCategory = categoryFilters.length === 0 || categoryFilters.includes(e.category);
         const matchesTerms = termFilters.length === 0 || termFilters.some(term => e.description === term);
-        return matchesSearchText && matchesCategory && matchesTerms;
+        const matchesAvoidable = !avoidableFilter || e.avoidable === true;
+        return matchesSearchText && matchesCategory && matchesTerms && matchesAvoidable;
       })
       .sort((a, b) => b.date.localeCompare(a.date));
   }, [expensesInView, searchQuery, selectedFilters]);
@@ -431,9 +439,17 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
             </div>
 
             {selectedFilters.filter(f => !CATEGORIES.includes(f as Category)).map(filter => (
-              <div key={filter} className="flex items-center gap-1.5 bg-zinc-100 text-zinc-800 px-3 py-1.5 rounded-xl text-sm font-medium">
+              <div key={filter} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium ${
+                filter === 'Vermeidbar'
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-zinc-100 text-zinc-800'
+              }`}>
                 <span>{filter}</span>
-                <button onClick={() => setSelectedFilters(selectedFilters.filter(f => f !== filter))} className="ml-1 p-0.5 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200 transition-colors">
+                <button onClick={() => setSelectedFilters(selectedFilters.filter(f => f !== filter))} className={`ml-1 p-0.5 rounded-xl transition-colors ${
+                  filter === 'Vermeidbar'
+                    ? 'text-amber-400 hover:text-amber-900 hover:bg-amber-200'
+                    : 'text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200'
+                }`}>
                   <HugeiconsIcon icon={Cancel01Icon} className="w-5 h-5" />
                 </button>
               </div>
@@ -441,7 +457,7 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
 
             <input
               type="text"
-              placeholder={selectedFilters.filter(f => !CATEGORIES.includes(f as Category)).length === 0 ? 'Suchen nach Einträgen...' : ''}
+              placeholder={selectedFilters.filter(f => !CATEGORIES.includes(f as Category) && f !== 'Vermeidbar').length === 0 && !selectedFilters.includes('Vermeidbar') ? 'Suchen nach Einträgen...' : ''}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
@@ -458,9 +474,28 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
             )}
           </div>
 
-          {isSearchFocused && searchQuery.trim() && searchSuggestions.descriptions.length > 0 && (
+          {isSearchFocused && (showAvoidableSuggestion || (searchQuery.trim() && searchSuggestions.descriptions.length > 0)) && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
-              {searchSuggestions.descriptions.length > 0 && (
+              {showAvoidableSuggestion && (
+                <div className="p-2">
+                  <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-3 py-1.5">Filter</div>
+                  <button onClick={() => {
+                    setSelectedFilters(prev => [...prev, 'Vermeidbar']);
+                    setSearchQuery('');
+                  }} className="w-full text-left px-3 py-2.5 text-sm hover:bg-amber-50 rounded-xl flex items-center justify-between transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                        <span className="text-amber-600 text-base">!</span>
+                      </div>
+                      <span className="font-medium text-amber-800">Vermeidbar</span>
+                    </div>
+                    <span className="text-xs text-amber-400">
+                      {expensesInView.filter(e => e.avoidable).length} Einträge
+                    </span>
+                  </button>
+                </div>
+              )}
+              {searchQuery.trim() && searchSuggestions.descriptions.length > 0 && (
                 <div className="p-2">
                   <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-3 py-1.5">Einträge</div>
                   {searchSuggestions.descriptions.map(item => (
