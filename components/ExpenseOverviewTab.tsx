@@ -560,6 +560,8 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
           currentDate={currentDate}
           viewMode={viewMode}
           payDay={budget.payDay}
+          budget={budget}
+          currentCycle={currentCycle}
         />
       )}
 

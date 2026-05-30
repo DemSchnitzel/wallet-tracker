@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
-import { format, parseISO, getDay } from 'date-fns';
+import { format, parseISO, getDay, getDaysInMonth, differenceInCalendarDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { BottomSheet } from '@/components/BottomSheet';
 import { computeDayData, getWeekDays, getMonthDays, getPayCycleDays, DayData } from '@/components/ExpenseTrendCard';
-import { Expense } from '@/types';
+import { Expense, Budget } from '@/types';
 import { formatCurrency } from '@/lib/constants';
+import { getAvailableBudget, PayCycle } from '@/lib/payCycle';
 
 interface TrendDetailSheetProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ interface TrendDetailSheetProps {
   currentDate: Date;
   viewMode: 'month' | 'week';
   payDay?: number | null;
+  budget: Budget;
+  currentCycle: PayCycle | null;
 }
 
 const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -21,9 +24,27 @@ const WEEKDAY_PLURAL = ['Montage', 'Dienstage', 'Mittwoche', 'Donnerstage', 'Fre
 
 // ─── Gemeinsamer Breakdown für Woche + Monat ──────────────────────────────────
 
-function TrendBreakdown({ dayDataList, viewMode }: { dayDataList: DayData[]; viewMode: 'month' | 'week' }) {
+function TrendBreakdown({ dayDataList, viewMode, budget, currentDate, currentCycle }: {
+  dayDataList: DayData[];
+  viewMode: 'month' | 'week';
+  budget: Budget;
+  currentDate: Date;
+  currentCycle: PayCycle | null;
+}) {
+  const today = format(new Date(), 'yyyy-MM-dd');
   const activeDays = dayDataList.filter(d => d.total > 0);
   const emptyDays = dayDataList.length - activeDays.length;
+
+  // Tagesbudget-Bilanz
+  const availableBudget = getAvailableBudget(budget);
+  const totalDaysInPeriod = currentCycle
+    ? differenceInCalendarDays(currentCycle.end, currentCycle.start) + 1
+    : viewMode === 'week' ? 7 : getDaysInMonth(currentDate);
+  const dailyBudget = availableBudget !== null ? availableBudget / totalDaysInPeriod : null;
+  const pastDays = dayDataList.filter(d => d.date <= today);
+  const daysUnder = dailyBudget !== null ? pastDays.filter(d => d.total <= dailyBudget!).length : 0;
+  const daysOver  = dailyBudget !== null ? pastDays.filter(d => d.total >  dailyBudget!).length : 0;
+  const showBudgetBilanz = dailyBudget !== null && pastDays.length > 0;
 
   // Top-Tage: 3 für Woche, 5 für Monat
   const topDays = [...activeDays]
@@ -66,6 +87,27 @@ function TrendBreakdown({ dayDataList, viewMode }: { dayDataList: DayData[]; vie
           </div>
         </div>
       </div>
+
+      {/* ── Tagesbudget-Bilanz ── */}
+      {showBudgetBilanz && (
+        <div>
+          <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
+            Tagesbudget-Bilanz
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-emerald-50 rounded-2xl p-4">
+              <div className="text-xs text-emerald-600 font-medium mb-1">Darunter</div>
+              <div className="text-2xl font-semibold text-emerald-700">{daysUnder}</div>
+              <div className="text-xs text-emerald-500 mt-0.5">von {pastDays.length} Tagen</div>
+            </div>
+            <div className="bg-red-50 rounded-2xl p-4">
+              <div className="text-xs text-red-500 font-medium mb-1">Darüber</div>
+              <div className="text-2xl font-semibold text-red-600">{daysOver}</div>
+              <div className="text-xs text-red-400 mt-0.5">von {pastDays.length} Tagen</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Wochentag-Muster (nur Monat) ── */}
       {viewMode === 'month' && activeDays.length > 0 && (
@@ -184,6 +226,8 @@ export function TrendDetailSheet({
   currentDate,
   viewMode,
   payDay,
+  budget,
+  currentCycle,
 }: TrendDetailSheetProps) {
   const dates = useMemo(() => {
     if (viewMode === 'week') return getWeekDays(currentDate);
@@ -200,7 +244,13 @@ export function TrendDetailSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title={title}>
-      <TrendBreakdown dayDataList={dayDataList} viewMode={viewMode} />
+      <TrendBreakdown
+        dayDataList={dayDataList}
+        viewMode={viewMode}
+        budget={budget}
+        currentDate={currentDate}
+        currentCycle={currentCycle}
+      />
     </BottomSheet>
   );
 }
