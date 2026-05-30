@@ -211,9 +211,28 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
     expensesInView.reduce((sum, e) => sum + e.amount, 0),
   [expensesInView]);
 
+  // Zyklusgesamtausgaben — immer zyklus-weit, unabhängig vom viewMode
+  const cycleTotalInView = useMemo(() => {
+    if (viewMode === 'month') return totalInView;
+    return expenses.filter(e => {
+      const d = parseISO(e.date);
+      if (currentCycle) return d >= currentCycle.start && d <= currentCycle.end;
+      return format(d, 'yyyy-MM') === format(currentDate, 'yyyy-MM');
+    }).reduce((sum, e) => sum + e.amount, 0);
+  }, [expenses, totalInView, viewMode, currentDate, currentCycle]);
+
   // Average spend per day for the current period
   const avgPerDay = useMemo(() => {
-    if (viewMode === 'week') return totalInView > 0 ? totalInView / 7 : null;
+    if (viewMode === 'week') {
+      if (totalInView <= 0) return null;
+      const today = new Date();
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const isCurrentWeek = isSameWeek(today, currentDate, { weekStartsOn: 1 });
+      const daysElapsed = isCurrentWeek
+        ? differenceInCalendarDays(today, weekStart) + 1
+        : 7;
+      return totalInView / daysElapsed;
+    }
     if (viewMode === 'month') {
       const today = new Date();
       if (currentCycle) {
@@ -323,6 +342,7 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
             {/* Card 1: Gesamtausgaben / Budget (merged) */}
             <TotalCard
               totalInView={totalInView}
+              cycleTotalInView={cycleTotalInView}
               budget={budget}
               currentDate={currentDate}
               viewMode={viewMode}
@@ -578,6 +598,7 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
         isOpen={isTotalSheetOpen}
         onClose={() => setIsTotalSheetOpen(false)}
         totalInView={totalInView}
+        cycleTotalInView={cycleTotalInView}
         avgPerDay={avgPerDay}
         previousPeriodData={previousPeriodData}
         viewMode={viewMode}
