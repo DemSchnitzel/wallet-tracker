@@ -81,11 +81,12 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
     };
   }, [selectedFilters, categoryEmblaApi]);
 
-  // Aktueller Zyklus (nur relevant wenn payDay gesetzt und viewMode === 'month')
+  // Aktueller Zyklus – immer berechnen wenn payDay gesetzt (nicht nur in Monatsansicht),
+  // damit Tag/Woche-Ansicht korrekte Zyklusgrenzen für Budget-Berechnungen kennt
   const currentCycle = useMemo(() => {
-    if (viewMode !== 'month' || !budget.payDay) return null;
+    if (!budget.payDay) return null;
     return getPayCycle(currentDate, budget.payDay);
-  }, [currentDate, viewMode, budget.payDay]);
+  }, [currentDate, budget.payDay]);
 
   // Current period expenses
   const expensesInView = useMemo(() => {
@@ -211,6 +212,16 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
     expensesInView.reduce((sum, e) => sum + e.amount, 0),
   [expensesInView]);
 
+  // Gesamtausgaben im aktuellen Zyklus – unabhängig vom viewMode (für dynamisches Tagesbudget)
+  const cycleTotalInView = useMemo(() => {
+    if (viewMode === 'month') return totalInView;
+    return expenses.filter(e => {
+      const d = parseISO(e.date);
+      if (currentCycle) return d >= currentCycle.start && d <= currentCycle.end;
+      return format(d, 'yyyy-MM') === format(currentDate, 'yyyy-MM');
+    }).reduce((sum, e) => sum + e.amount, 0);
+  }, [expenses, totalInView, viewMode, currentDate, currentCycle]);
+
   // Average spend per day for the current period
   const avgPerDay = useMemo(() => {
     if (viewMode === 'week') return totalInView > 0 ? totalInView / 7 : null;
@@ -323,6 +334,7 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
             {/* Card 1: Gesamtausgaben / Budget (merged) */}
             <TotalCard
               totalInView={totalInView}
+              cycleTotalInView={cycleTotalInView}
               budget={budget}
               currentDate={currentDate}
               viewMode={viewMode}
@@ -578,6 +590,7 @@ export const ExpenseOverviewTab = ({ expenses, onEditExpense, budget }: ExpenseO
         isOpen={isTotalSheetOpen}
         onClose={() => setIsTotalSheetOpen(false)}
         totalInView={totalInView}
+        cycleTotalInView={cycleTotalInView}
         avgPerDay={avgPerDay}
         previousPeriodData={previousPeriodData}
         viewMode={viewMode}

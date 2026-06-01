@@ -32,19 +32,20 @@ function TrendBreakdown({ dayDataList, viewMode, budget, currentDate, currentCyc
   currentCycle: PayCycle | null;
 }) {
   const today = format(new Date(), 'yyyy-MM-dd');
-  const activeDays = dayDataList.filter(d => d.total > 0);
-  const emptyDays = dayDataList.length - activeDays.length;
+  // Nur vergangene Tage zählen — Zukunftstage haben per Definition keine Ausgaben
+  const pastDays = dayDataList.filter(d => d.date <= today);
+  const activeDays = pastDays.filter(d => d.total > 0);
+  const emptyDays = pastDays.length - activeDays.length;
 
-  // Tagesbudget-Bilanz
+  // Tagesbudget-Bilanz (nur Tage mit tatsächlichen Ausgaben, nicht 0€-Tage)
   const availableBudget = getAvailableBudget(budget);
   const totalDaysInPeriod = currentCycle
     ? differenceInCalendarDays(currentCycle.end, currentCycle.start) + 1
     : viewMode === 'week' ? 7 : getDaysInMonth(currentDate);
   const dailyBudget = availableBudget !== null ? availableBudget / totalDaysInPeriod : null;
-  const pastDays = dayDataList.filter(d => d.date <= today);
-  const daysUnder = dailyBudget !== null ? pastDays.filter(d => d.total <= dailyBudget!).length : 0;
-  const daysOver  = dailyBudget !== null ? pastDays.filter(d => d.total >  dailyBudget!).length : 0;
-  const showBudgetBilanz = dailyBudget !== null && pastDays.length > 0;
+  const daysUnder = dailyBudget !== null ? activeDays.filter(d => d.total <= dailyBudget!).length : 0;
+  const daysOver  = dailyBudget !== null ? activeDays.filter(d => d.total >  dailyBudget!).length : 0;
+  const showBudgetBilanz = dailyBudget !== null && activeDays.length > 0;
 
   // Top-Tage: 3 für Woche, 5 für Monat
   const topDays = [...activeDays]
@@ -73,18 +74,11 @@ function TrendBreakdown({ dayDataList, viewMode, budget, currentDate, currentCyc
     <div className="space-y-6">
 
       {/* ── Stats-Grid ── */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-zinc-50 rounded-2xl p-4">
-          <div className="text-xs text-zinc-400 font-medium mb-1">Aktivste Tage</div>
-          <div className="text-2xl font-semibold text-zinc-900">{activeDays.length}</div>
-          <div className="text-xs text-zinc-400 mt-0.5">von {dayDataList.length} Tagen</div>
-        </div>
-        <div className="bg-zinc-50 rounded-2xl p-4">
-          <div className="text-xs text-zinc-400 font-medium mb-1">Ohne Ausgaben</div>
-          <div className="text-2xl font-semibold text-zinc-900">{emptyDays}</div>
-          <div className="text-xs text-zinc-400 mt-0.5">
-            {emptyDays === 1 ? 'Tag' : 'Tage'} gespart
-          </div>
+      <div className="bg-zinc-50 rounded-2xl p-4">
+        <div className="text-xs text-zinc-400 font-medium mb-1">Ohne Ausgaben</div>
+        <div className="text-2xl font-semibold text-zinc-900">{emptyDays}</div>
+        <div className="text-xs text-zinc-400 mt-0.5">
+          {emptyDays === 1 ? 'Tag' : 'Tage'} ohne Ausgaben · von {pastDays.length} vergangenen Tagen
         </div>
       </div>
 
@@ -98,12 +92,12 @@ function TrendBreakdown({ dayDataList, viewMode, budget, currentDate, currentCyc
             <div className="bg-emerald-50 rounded-2xl p-4">
               <div className="text-xs text-emerald-600 font-medium mb-1">Darunter</div>
               <div className="text-2xl font-semibold text-emerald-700">{daysUnder}</div>
-              <div className="text-xs text-emerald-500 mt-0.5">von {pastDays.length} Tagen</div>
+              <div className="text-xs text-emerald-500 mt-0.5">von {activeDays.length} Ausgabentagen</div>
             </div>
             <div className="bg-red-50 rounded-2xl p-4">
               <div className="text-xs text-red-500 font-medium mb-1">Darüber</div>
               <div className="text-2xl font-semibold text-red-600">{daysOver}</div>
-              <div className="text-xs text-red-400 mt-0.5">von {pastDays.length} Tagen</div>
+              <div className="text-xs text-red-400 mt-0.5">von {activeDays.length} Ausgabentagen</div>
             </div>
           </div>
         </div>

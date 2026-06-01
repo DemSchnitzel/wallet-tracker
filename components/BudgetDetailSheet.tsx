@@ -16,6 +16,7 @@ interface TotalDetailSheetProps {
   isOpen: boolean;
   onClose: () => void;
   totalInView: number;
+  cycleTotalInView: number;
   avgPerDay: number | null;
   previousPeriodData: { total: number; label: string } | null;
   viewMode: 'month' | 'week' | 'day';
@@ -29,6 +30,7 @@ export function TotalDetailSheet({
   isOpen,
   onClose,
   totalInView,
+  cycleTotalInView,
   avgPerDay,
   previousPeriodData,
   viewMode,
@@ -54,15 +56,20 @@ export function TotalDetailSheet({
   const amount = availableBudget ?? 0;
 
   const daysInMonth = getDaysInMonth(currentDate);
-  const allowance =
-    viewMode === 'day'  ? amount / daysInMonth :
-    viewMode === 'week' ? (amount / daysInMonth) * 7 :
-    amount;
-  const remaining = allowance - totalInView;
-
   const daysPassed = Math.max(1, differenceInDays(today, periodStart) + 1);
   const daysLeft   = Math.max(0, differenceInCalendarDays(periodEnd, today));
   const totalDaysInPeriod = differenceInCalendarDays(periodEnd, periodStart) + 1;
+
+  // Dynamisches Tagesbudget: verbleibende Zyklusbudget / verbleibende Tage
+  // → stimmt mit "Noch pro Tag" in der Monatsansicht überein
+  const cycleRemaining = amount - cycleTotalInView;
+  const dynamicDailyBudget = daysLeft > 0 ? Math.max(0, cycleRemaining) / daysLeft : 0;
+
+  const allowance =
+    viewMode === 'day'  ? dynamicDailyBudget :
+    viewMode === 'week' ? (amount / daysInMonth) * 7 :
+    amount;
+  const remaining = allowance - totalInView;
 
   const dailyRate = totalInView / daysPassed;
   const forecast  = dailyRate * totalDaysInPeriod;

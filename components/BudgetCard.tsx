@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { format, getDaysInMonth, differenceInCalendarDays } from 'date-fns';
+import { format, getDaysInMonth, differenceInCalendarDays, endOfMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowExpand01Icon, Wallet02Icon } from '@hugeicons/core-free-icons';
@@ -10,6 +10,7 @@ import { getAvailableBudget, getSavingsGoalAmount, PayCycle } from '@/lib/payCyc
 
 interface TotalCardProps {
   totalInView: number;
+  cycleTotalInView: number;
   budget: Budget;
   currentDate: Date;
   viewMode: 'month' | 'week' | 'day';
@@ -17,7 +18,7 @@ interface TotalCardProps {
   onExpand: () => void;
 }
 
-export function TotalCard({ totalInView, budget, currentDate, viewMode, currentCycle, onExpand }: TotalCardProps) {
+export function TotalCard({ totalInView, cycleTotalInView, budget, currentDate, viewMode, currentCycle, onExpand }: TotalCardProps) {
   const today = new Date();
   const availableBudget = getAvailableBudget(budget);
   const hasIncomePlan = budget.monthlyIncome !== null;
@@ -30,10 +31,14 @@ export function TotalCard({ totalInView, budget, currentDate, viewMode, currentC
   const hasBudget = availableBudget !== null && inCurrentPeriod;
   const amount = availableBudget ?? 0;
 
-  // Anteiliges Allowance je View-Modus
   const daysInMonth = getDaysInMonth(currentDate);
+  const periodEnd = currentCycle ? currentCycle.end : endOfMonth(currentDate);
+  const daysLeft = Math.max(0, differenceInCalendarDays(periodEnd, today));
+  const cycleRemaining = amount - cycleTotalInView;
+  const dynamicDailyBudget = daysLeft > 0 ? Math.max(0, cycleRemaining) / daysLeft : 0;
+
   const allowance =
-    viewMode === 'day'  ? amount / daysInMonth :
+    viewMode === 'day'  ? dynamicDailyBudget :
     viewMode === 'week' ? (amount / daysInMonth) * 7 :
     amount;
 
