@@ -16,7 +16,6 @@ interface TotalDetailSheetProps {
   isOpen: boolean;
   onClose: () => void;
   totalInView: number;
-  cycleTotalInView: number;
   avgPerDay: number | null;
   previousPeriodData: { total: number; label: string } | null;
   viewMode: 'month' | 'week' | 'day';
@@ -30,7 +29,6 @@ export function TotalDetailSheet({
   isOpen,
   onClose,
   totalInView,
-  cycleTotalInView,
   avgPerDay,
   previousPeriodData,
   viewMode,
@@ -60,11 +58,10 @@ export function TotalDetailSheet({
     viewMode === 'day'  ? amount / daysInMonth :
     viewMode === 'week' ? (amount / daysInMonth) * 7 :
     amount;
-  // Zyklusrest: immer Gesamtbudget minus Gesamtausgaben im Zyklus
-  const remaining = amount - cycleTotalInView;
+  const remaining = allowance - totalInView;
 
   const daysPassed = Math.max(1, differenceInDays(today, periodStart) + 1);
-  const daysLeft   = Math.max(1, differenceInCalendarDays(periodEnd, today) + 1);
+  const daysLeft   = Math.max(0, differenceInCalendarDays(periodEnd, today));
   const totalDaysInPeriod = differenceInCalendarDays(periodEnd, periodStart) + 1;
 
   const dailyRate = totalInView / daysPassed;
@@ -99,9 +96,8 @@ export function TotalDetailSheet({
                 {formatCurrency(Math.abs(remaining))}
               </div>
               <div className="text-xs text-zinc-400 mt-1">
-                {viewMode === 'month'
-                  ? `${formatCurrency(totalInView)} von ${formatCurrency(amount)} ausgegeben`
-                  : `${formatCurrency(cycleTotalInView)} von ${formatCurrency(amount)} im Zyklus`}
+                {formatCurrency(totalInView)} von {formatCurrency(allowance)}{' '}
+                {viewMode === 'day' ? 'Tagesbudget' : viewMode === 'week' ? 'Wochenbudget' : 'ausgegeben'}
               </div>
             </div>
 
@@ -120,7 +116,7 @@ export function TotalDetailSheet({
                 <div className="bg-zinc-50 rounded-2xl p-4">
                   <div className="text-xs text-zinc-400 font-medium mb-1">Noch pro Tag</div>
                   <div className={`text-lg font-semibold tabular-nums ${remaining > 0 ? 'text-zinc-900' : 'text-red-400'}`}>
-                    {remaining > 0 ? formatCurrency(remaining / daysLeft) : '—'}
+                    {remaining > 0 && daysLeft > 0 ? formatCurrency(remaining / daysLeft) : '—'}
                   </div>
                   <div className="text-xs text-zinc-400 mt-0.5">
                     {daysLeft} Tag{daysLeft !== 1 ? 'e' : ''} verbleibend

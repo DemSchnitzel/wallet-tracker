@@ -10,7 +10,6 @@ import { getAvailableBudget, getSavingsGoalAmount, PayCycle } from '@/lib/payCyc
 
 interface TotalCardProps {
   totalInView: number;
-  cycleTotalInView: number;
   budget: Budget;
   currentDate: Date;
   viewMode: 'month' | 'week' | 'day';
@@ -18,7 +17,7 @@ interface TotalCardProps {
   onExpand: () => void;
 }
 
-export function TotalCard({ totalInView, cycleTotalInView, budget, currentDate, viewMode, currentCycle, onExpand }: TotalCardProps) {
+export function TotalCard({ totalInView, budget, currentDate, viewMode, currentCycle, onExpand }: TotalCardProps) {
   const today = new Date();
   const availableBudget = getAvailableBudget(budget);
   const hasIncomePlan = budget.monthlyIncome !== null;
@@ -38,10 +37,7 @@ export function TotalCard({ totalInView, cycleTotalInView, budget, currentDate, 
     viewMode === 'week' ? (amount / daysInMonth) * 7 :
     amount;
 
-  // Balken: im Tag/Woche-Modus Zyklusfortschritt zeigen, im Monat Periodenfortschritt
-  const barBase = viewMode === 'month' ? totalInView : cycleTotalInView;
-  const barTotal = viewMode === 'month' ? allowance : amount;
-  const rawPercentage = hasBudget ? (barBase / barTotal) * 100 : 0;
+  const rawPercentage = hasBudget ? (totalInView / allowance) * 100 : 0;
   const percentage = Math.min(rawPercentage, 100);
   const isOverBudget = rawPercentage > 100;
 
@@ -51,17 +47,18 @@ export function TotalCard({ totalInView, cycleTotalInView, budget, currentDate, 
     '#34d399';
 
   const allowanceLabel =
-    viewMode === 'month' ? `von ${formatCurrency(allowance)}` :
-    `von ${formatCurrency(amount)}`;
+    viewMode === 'day'  ? `von ${formatCurrency(allowance)} / Tag` :
+    viewMode === 'week' ? `von ${formatCurrency(allowance)} / Woche` :
+    `von ${formatCurrency(allowance)}`;
 
-  // Zyklusrest + verbleibende Tage (alle Ansichten, wenn Budget aktiv)
+  // Tagesrate berechnen (nur Monatsansicht, nur wenn Budget aktiv)
   const dailyRateLabel = (() => {
-    if (!hasBudget) return null;
-    const cycleRemaining = amount - cycleTotalInView;
-    if (cycleRemaining <= 0) return null;
+    if (!hasBudget || viewMode !== 'month') return null;
+    const remaining = allowance - totalInView;
+    if (remaining <= 0) return null;
     const end = currentCycle ? currentCycle.end : new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
     const daysLeft = Math.max(1, differenceInCalendarDays(end, today) + 1);
-    return `Noch ${formatCurrency(cycleRemaining)} · ${daysLeft} ${daysLeft === 1 ? 'Tag' : 'Tage'}`;
+    return `${formatCurrency(remaining / daysLeft)}/Tag · ${daysLeft} Tage`;
   })();
 
   const header = hasBudget
